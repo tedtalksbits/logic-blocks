@@ -1,0 +1,9 @@
+# Keeps the GitHub Actions in .github/workflows current (one PR per action, checked monthly; CI tests each PR).
+# Gradle dependencies (Paper API, MockBukkit, Fabric) are left out on purpose: they follow the Minecraft version and
+# are upgraded by hand with docs/UPGRADING.md.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

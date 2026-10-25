@@ -29,6 +29,12 @@ ci/run-selftest.sh path/to/paper-26.3-211.jar /tmp/selftest-run
 The second argument must be a folder that doesn't exist yet. Without internet access, add
 `PAPER_SEED_DIR=path/to/an/existing/paper/server` so its `cache/`, `versions/` and `libraries/` are reused.
 
+## Dependabot
+
+`.github/dependabot.yml` checks the workflow's actions monthly and opens a PR when one has a new version; CI runs on
+the PR, so merge it when it's green. It doesn't touch Gradle dependencies: Paper, MockBukkit and Fabric move with the
+Minecraft version (`docs/UPGRADING.md`).
+
 ## Not yet
 
 Release jars on tags (planned). The real client is not launched in CI; UI checks stay manual (`docs/TEST_PLAN.md`).
