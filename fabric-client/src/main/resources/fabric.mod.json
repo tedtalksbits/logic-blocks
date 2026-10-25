@@ -3,7 +3,7 @@
 	"id": "logicblocks",
 	"version": "${version}",
 	"name": "Logic Blocks",
-	"description": "Rule editor for Logic Blocks on servers running the Logic Blocks plugin: if-then redstone with live readings.",
+	"description": "Rule editor and side labels for Logic Blocks on servers running the Logic Blocks plugin: if-then redstone with live readings.",
 	"authors": ["Tedane"],
 	"license": "All-Rights-Reserved",
 	"environment": "client",

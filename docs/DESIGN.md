@@ -52,6 +52,20 @@ with a log line. Pistons can't move Logic Blocks and explosions don't destroy th
 
 The item carries the program too (`logicblocks:program` on the item), so breaking and placing keeps the rules.
 
+## Side labels
+
+The client mod draws N, E, S, W over the Logic Block you're looking at. Players had no way to tell the sides apart
+except F3. A resource-pack texture was considered and rejected: a Logic Block *is* a daylight detector, so a texture
+either changes every daylight detector or needs a hidden block state or a display entity per block, and the owner
+wants no visual clash with vanilla at all. Labels drawn by the client touch nothing on the server or in the world.
+
+The client can't tell a Logic Block from a daylight detector, so it asks the server about the one under its
+crosshair (`query`/`is`, docs/PROTOCOL.md) and caches the answer for 2 seconds (`LogicBlockLookup`). The letters
+float just above the top, inside the block's own column (`SideLabels`), so a neighbour never hides them; like name
+tags, a dim copy shows through anything placed on top. North is red, like a compass needle. Drawn with Fabric's
+`LevelRenderEvents.COLLECT_SUBMITS` and Minecraft's `submitText` (`SideLabelRenderer`); this is the part to check
+first on a Minecraft update. A key (default N) toggles them, saved in `config/logicblocks.properties`.
+
 ## Editor
 
 The client opens when the server sends `open` after a right-click; it never asks on its own. While open, the

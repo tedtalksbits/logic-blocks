@@ -5,6 +5,7 @@ import dev.whizzle.logic.model.Wire;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -25,12 +26,17 @@ import java.util.*;
 public final class ClientBridge implements PluginMessageListener, Listener {
     public static final int PROTOCOL = 1;
     public static final String HELLO = "logicblocks:hello", WELCOME = "logicblocks:welcome", OPEN = "logicblocks:open",
-        SAVE = "logicblocks:save", RESULT = "logicblocks:result", LIVE = "logicblocks:live", CLOSE = "logicblocks:close";
-    public static final List<String> INCOMING = List.of(HELLO, SAVE, CLOSE);
-    public static final List<String> OUTGOING = List.of(WELCOME, OPEN, RESULT, LIVE);
+        SAVE = "logicblocks:save", RESULT = "logicblocks:result", LIVE = "logicblocks:live", CLOSE = "logicblocks:close",
+        QUERY = "logicblocks:query", IS = "logicblocks:is";
+    public static final List<String> INCOMING = List.of(HELLO, SAVE, CLOSE, QUERY);
+    public static final List<String> OUTGOING = List.of(WELCOME, OPEN, RESULT, LIVE, IS);
     /** Editing reach, in blocks from the block's centre. */
     public static final double REACH = 8;
     private static final int REQUESTS_PER_SECOND = 10;
+    /** "Is this a Logic Block?" answers only for blocks this close to the player (labels show within reach). */
+    public static final double QUERY_RANGE = 16;
+    /** Queries have their own budget, so looking around never blocks a save. */
+    private static final int QUERIES_PER_SECOND = 20;
 
     public interface Outbox { void send(Player player, String channel, byte[] data); }
 
@@ -39,6 +45,7 @@ public final class ClientBridge implements PluginMessageListener, Listener {
     private final boolean anyoneEdits;
     private final Map<UUID, LogicNode.Key> watching = new HashMap<>();
     private final Map<UUID, long[]> rate = new HashMap<>();
+    private final Map<UUID, long[]> queryRate = new HashMap<>();
 
     private final java.util.function.Function<LogicNode, dev.whizzle.logic.model.Snapshot> sensors;
 
@@ -112,7 +119,17 @@ public final class ClientBridge implements PluginMessageListener, Listener {
 
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
-        if (!allow(player)) return;
+        if (channel.equals(QUERY)) {
+            if (!allow(queryRate, player, QUERIES_PER_SECOND)) return;
+            try {
+                Wire.Reader in = new Wire.Reader(message);
+                int x = in.int32(), y = in.int32(), z = in.int32();
+                in.end();
+                query(player, x, y, z);
+            } catch (IllegalArgumentException ignored) { }
+            return;
+        }
+        if (!allow(rate, player, REQUESTS_PER_SECOND)) return;
         try {
             Wire.Reader in = new Wire.Reader(message);
             switch (channel) {
@@ -129,6 +146,19 @@ public final class ClientBridge implements PluginMessageListener, Listener {
         } catch (IllegalArgumentException e) {
             result(player, false, "Bad request from client: " + e.getMessage());
         }
+    }
+
+    /**
+     * Answers whether the block at x, y, z (in the player's world) is a Logic Block, so the mod can label its sides.
+     * Silent for unloaded chunks and blocks out of range: the mod only asks about the block under its crosshair.
+     */
+    void query(Player p, int x, int y, int z) {
+        World w = p.getWorld();
+        if (!w.isChunkLoaded(x >> 4, z >> 4)) return;
+        // A fresh Location: Block.getLocation() may hand back a shared object that add() would mutate.
+        if (p.getLocation().distance(new org.bukkit.Location(w, x + 0.5, y + 0.5, z + 0.5)) > QUERY_RANGE) return;
+        Block block = w.getBlockAt(x, y, z);
+        outbox.send(p, IS, new Wire.Writer().int32(x).int32(y).int32(z).bool(manager.at(block).isPresent()).bytes());
     }
 
     void save(Player p, int x, int y, int z, byte[] data) {
@@ -150,13 +180,13 @@ public final class ClientBridge implements PluginMessageListener, Listener {
         outbox.send(p, RESULT, new Wire.Writer().bool(ok).utf(message).bytes());
     }
 
-    private boolean allow(Player p) {
+    private static boolean allow(Map<UUID, long[]> rate, Player p, int perSecond) {
         long now = System.currentTimeMillis() / 1000;
         long[] w = rate.computeIfAbsent(p.getUniqueId(), k -> new long[]{now, 0});
         if (w[0] != now) { w[0] = now; w[1] = 0; }
-        return ++w[1] <= REQUESTS_PER_SECOND;
+        return ++w[1] <= perSecond;
     }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { watching.remove(e.getPlayer().getUniqueId()); rate.remove(e.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent e) { watching.remove(e.getPlayer().getUniqueId()); rate.remove(e.getPlayer().getUniqueId()); queryRate.remove(e.getPlayer().getUniqueId()); }
 }

@@ -9,15 +9,18 @@ import java.util.List;
 /** The client side of docs/PROTOCOL.md: channel names and message encodings (pure Java, unit-tested). */
 public final class Messages {
 	public static final int PROTOCOL = 1;
-	public static final String HELLO = "hello", WELCOME = "welcome", OPEN = "open", SAVE = "save", RESULT = "result", LIVE = "live", CLOSE = "close";
-	public static final List<String> CLIENTBOUND = List.of(WELCOME, OPEN, RESULT, LIVE);
-	public static final List<String> SERVERBOUND = List.of(HELLO, SAVE, CLOSE);
+	public static final String HELLO = "hello", WELCOME = "welcome", OPEN = "open", SAVE = "save", RESULT = "result", LIVE = "live", CLOSE = "close",
+		QUERY = "query", IS = "is";
+	public static final List<String> CLIENTBOUND = List.of(WELCOME, OPEN, RESULT, LIVE, IS);
+	public static final List<String> SERVERBOUND = List.of(HELLO, SAVE, CLOSE, QUERY);
 
 	private Messages() {}
 
 	public record Open(int x, int y, int z, boolean editable, String owner, Program program, Snapshot snapshot) {}
 	public record Live(int x, int y, int z, Snapshot snapshot) {}
 	public record Result(boolean ok, String message) {}
+	/** The server's answer to {@link #query}: whether the block at x, y, z is a Logic Block. */
+	public record Is(int x, int y, int z, boolean logic) {}
 
 	public static int welcome(byte[] data) { Wire.Reader in = new Wire.Reader(data); int v = in.varInt(); in.end(); return v; }
 
@@ -42,8 +45,16 @@ public final class Messages {
 
 	public static Result result(byte[] data) { Wire.Reader in = new Wire.Reader(data); return new Result(in.bool(), in.utf(1024)); }
 
+	public static Is is(byte[] data) {
+		Wire.Reader in = new Wire.Reader(data);
+		Is is = new Is(in.int32(), in.int32(), in.int32(), in.bool());
+		in.end();
+		return is;
+	}
+
 	public static byte[] hello() { return new Wire.Writer().varInt(PROTOCOL).bytes(); }
 	public static byte[] close() { return new byte[0]; }
+	public static byte[] query(int x, int y, int z) { return new Wire.Writer().int32(x).int32(y).int32(z).bytes(); }
 	public static byte[] save(int x, int y, int z, Program program) {
 		return new Wire.Writer().int32(x).int32(y).int32(z).bytes(program.encode()).bytes();
 	}

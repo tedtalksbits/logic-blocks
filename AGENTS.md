@@ -23,12 +23,15 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - Client: 6 unit tests pass. Exercised end to end in real **26.2** and **26.3** games; on 26.3 (client 0.2.0, Paper
   26.3-211) the owner ran every `docs/TEST_PLAN.md` test and all passed.
 - CI (GitHub Actions) green from its first run: plugin, client, real-Paper 26.3 self-test.
+- Side labels (plugin 0.2.0, client 0.3.0): the mod draws N, E, S, W over the Logic Block under the crosshair, asking
+  the server via `query`/`is`; toggle key N. Unit-tested (19 plugin, 12 client) and the self-test passes, but **not
+  yet seen in a real 26.3 game** (`docs/TEST_PLAN.md` tests 15-20). See `docs/DESIGN.md`, "Side labels".
 
 ## Open items
 
-1. Release jars on tags (CI itself is done, `docs/CI.md`). No automatic deploy to the live server.
-2. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks, showing the sides in the
-   world while the editor is open.
+1. Side labels: the owner's real-game check (tests 15-20); adjust size, height or colours from what they see.
+2. Release jars on tags (CI itself is done, `docs/CI.md`). No automatic deploy to the live server.
+3. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks.
 
 ## Decisions already made (don't reopen without asking)
 
@@ -45,6 +48,8 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | Programs and state stored in the chunk's persistent data; the item carries the program when broken | Moves with the world save, runs only in loaded chunks like redstone |
 | Owner (and operators) edit by default; `editing: anyone` opens it | Owner's call |
 | v1 inputs: block on a side, signal on a side, items in an adjacent container, players nearby | Owner: "fine for v1" |
+| Sides shown by labels the mod draws, not a texture | Owner wants no visual change to any vanilla block; a texture would hit every daylight detector |
+| Labels on by default, toggle key N, N/E/S/W only | Owner's call |
 
 ## Working rules
 

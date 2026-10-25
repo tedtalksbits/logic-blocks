@@ -13,6 +13,8 @@ Int32, Bool (1 byte), String (VarInt byte length + UTF-8), Bytes (VarInt length 
 | `logicblocks:save` | C->S | Int32 x, y, z, Bytes program |
 | `logicblocks:result` | S->C | Bool ok, String message |
 | `logicblocks:close` | C->S | (empty) |
+| `logicblocks:query` | C->S | Int32 x, y, z (since plugin 0.2.0 / client 0.3.0) |
+| `logicblocks:is` | S->C | Int32 x, y, z, Bool is a Logic Block |
 
 **Program** (`Program.encode`): VarInt format (1), VarInt rule count (0-8), for each rule: VarInt condition count
 (0-3), each condition = VarInt kind, VarInt side, VarInt op, String id, VarInt number, VarInt number2; then the
@@ -33,5 +35,13 @@ count + each distance in tenths of a block, VarInt current output, VarInt (match
   16 blocks away, the block disappears, or the player leaves.
 - `save` is checked for ownership (`editing` setting, `logicblocks.admin`), reach (8 blocks), and with
   `Program.problem()`; the answer is `result`. Each player may send at most 10 requests per second.
+- `query` asks whether the block at x, y, z (in the player's world) is a Logic Block. The client only asks about a
+  daylight detector under its crosshair, at most once a second per block while waiting and again after 2 seconds
+  while still looking, and draws N, E, S, W while the answer is yes. The server answers with `is` for loaded blocks
+  within 16 blocks of the player and stays silent otherwise. Queries have their own limit (20 per second per
+  player), so they never use up the budget for `save`. Anyone may ask; the answer reveals nothing a player can't see
+  by right-clicking.
+- `query`/`is` were added without bumping the protocol: the client checks that the server listens on
+  `logicblocks:query` before asking, and an older client never asks. Older pairs keep working without labels.
 - Bump `ClientBridge.PROTOCOL` and `Messages.PROTOCOL` together when a message's bytes change. A new
   `Program.FORMAT` means stored programs need a migration in `Program.decode`.

@@ -22,23 +22,25 @@ next to every condition, what the block sees right now and whether it's true, be
 
 ## Install
 
-**Server:** copy `logic-plugin/build/libs/logic-plugin-0.1.0.jar` into `plugins/` and restart. Settings are in
+**Server:** copy `logic-plugin/build/libs/logic-plugin-0.2.0.jar` into `plugins/` and restart. Settings are in
 `plugins/LogicBlocks/config.yml`.
 
 **Each player who wants to edit rules:** Fabric for Minecraft 26.3 (Loader 0.19.5), then put
-`logic-blocks-client-0.2.0.jar` and `fabric-api-0.164.0+26.3.jar` in `.minecraft/mods`. (Client 0.1.0 is the
-same editor built for 26.2.)
+`logic-blocks-client-0.3.0.jar` and `fabric-api-0.164.0+26.3.jar` in `.minecraft/mods`. (Client 0.1.0 is the
+same editor built for 26.2. Side labels need client 0.3.0 and plugin 0.2.0; older pairs still work without them.)
 
 ## Using it
 
 1. **Craft** a Logic Block: a comparator on top, redstone on both sides and below, a daylight detector in the
    middle (changeable in `config.yml`). Operators can use `/logic give`.
 2. **Place** it. It looks like a daylight detector but ignores daylight.
-3. **Right-click** it to open the editor (sneak + right-click with a block places against it instead).
-4. **+ Rule**, then click the buttons to cycle through choices and type ids and numbers. Each condition shows
+3. **Look at it** (with the mod): **N, E, S, W** float over its top, north in red, so you can see which side is
+   which. Press **N** to turn the labels off or on (rebind it under Controls > Logic Blocks).
+4. **Right-click** it to open the editor (sneak + right-click with a block places against it instead).
+5. **+ Rule**, then click the buttons to cycle through choices and type ids and numbers. Each condition shows
    `now: <what the block sees> (true/false)`; the rule that's true right now is green. **use** fills in the block or
    item that's actually there.
-5. **Save**. The block's output changes within a tick or two.
+6. **Save**. The block's output changes within a tick or two.
 
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
 
@@ -66,7 +68,8 @@ otherwise **Keep**, is a door latch in one block.
 
 ### Good to know
 
-- **Sides are compass directions.** The block has no front; press F3 to see which way you're facing.
+- **Sides are compass directions.** The block has no front; with the mod, look at it to see N, E, S, W (or press F3
+  to see which way you're facing).
 - **Bring signal inputs in through a repeater or comparator**, or put a lever or button on a solid block that touches
   the Logic Block. Dust touching the Logic Block also carries the block's own output back in (it powers every side),
   so plain dust as an input latches on. The editor warns about this.
@@ -102,9 +105,9 @@ otherwise **Keep**, is a door latch in one block.
 ## Building
 
 Plugin (from the repo root): `gradle build` with Java 25. It runs the tests and writes
-`logic-plugin/build/libs/logic-plugin-0.1.0.jar`.
+`logic-plugin/build/libs/logic-plugin-0.2.0.jar`.
 
-Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.2.0.jar`. The
+Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.3.0.jar`. The
 client compiles the plugin's rule model (`dev.whizzle.logic.model`) from `logic-plugin/src`, so both sides share
 one implementation of the rules, their encoding and their evaluation.
 

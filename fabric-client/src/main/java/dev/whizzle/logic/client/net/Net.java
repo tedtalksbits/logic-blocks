@@ -29,6 +29,12 @@ public final class Net {
 		}
 	}
 
+	/** Whether the server listens on this channel (an older plugin may not know newer ones). */
+	public static boolean canSend(String channel) {
+		CustomPacketPayload.Type<RawPayload> type = TYPES.get(channel);
+		return type != null && ClientPlayNetworking.canSend(type);
+	}
+
 	public static void send(String channel, byte[] data) {
 		CustomPacketPayload.Type<RawPayload> type = TYPES.get(channel);
 		if (type == null) throw new IllegalArgumentException(channel);

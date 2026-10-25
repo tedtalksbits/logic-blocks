@@ -1,8 +1,9 @@
 # Test plan: Logic Blocks
 
-Everything below has passed in a real client against a real Paper server on 26.2 and on 26.3 (client 0.2.0, Paper
-26.3-211), and CI runs the automated real-server self-test on every push. Rerun it after changes to the editor or
-the rules, and to judge how it feels.
+Tests 1-14 have passed in a real client against a real Paper server on 26.2 and on 26.3 (client 0.2.0, Paper
+26.3-211), and CI runs the automated real-server self-test on every push. Tests 15-20 (side labels, client 0.3.0 with
+plugin 0.2.0) are new and have **not** been run in a real game yet. Rerun the plan after changes to the editor or the
+rules, and to judge how it feels.
 
 ## Setup (once, about 5 minutes)
 
@@ -10,7 +11,7 @@ the rules, and to judge how it feels.
 2. Double-click `run\build-and-install.cmd` in this project. It builds and tests the plugin, installs it on the
    Blueprints test server (`..\blueprints-mc\run\local-paper`), builds the client mod, and copies it to
    `run\client-mods\`.
-3. Copy `run\client-mods\logic-blocks-client-0.2.0.jar` into `%APPDATA%\.minecraft\mods\` next to the Blueprints
+3. Copy `run\client-mods\logic-blocks-client-0.3.0.jar` into (and remove any older `logic-blocks-client` jar from) `%APPDATA%\.minecraft\mods\` next to the Blueprints
    mod and Fabric API you already have.
 4. Start the server, launch **fabric-loader-26.3**, join. In creative or survival, `/logic give` gives you a few.
 
@@ -32,6 +33,12 @@ the rules, and to judge how it feels.
 | 12 | `/time set night`, then `/time set day` | The output doesn't change (it ignores daylight). |
 | 13 | Stop and start the server, return | Rules, and a latched toggle from test 6, are still there. |
 | 14 | `/logic info` while looking at it | The rules in chat (this is what players without the mod see when they right-click). |
+| 15 | **Side labels:** look at a Logic Block | **N** (red), **E**, **S**, **W** float just above it within a moment. Press F3: the red N is on the side you face when F3 says "Facing: north". |
+| 16 | Walk around it, look at it from above and from close up | The letters always face you and stay on their sides. Not too big, not too small? |
+| 17 | Put a block on top of it, and wool on its north side | The letters still show (dimmer where something covers them). |
+| 18 | Look at an ordinary daylight detector | No letters. |
+| 19 | Press **N** | Above the hotbar: "side labels off"; the letters go. Press N again: back on. Leave and rejoin: your choice is kept. |
+| 20 | Options > Controls > Key Binds > **Logic Blocks** | "Side labels (N, E, S, W)", bound to N, can be rebound. |
 
 ## Please report
 
@@ -45,5 +52,7 @@ recipe cost.
 2. **Plain dust as an input latches**, because the block's own output flows back through it. Use a repeater; the
    editor warns. Fixing this in the plugin would mean guessing which part of the dust's power is external.
 3. **Only the owner (and operators) can edit.** Set `editing: anyone` in `config.yml` to open it up.
-4. **Sides are compass directions.** A future version could show the sides in the world while the editor is open.
+4. **Sides are compass directions.** The mod now labels them (tests 15-20). Players without the mod still use F3.
 5. **Nothing yet for timers, counters, variables, or wireless links between blocks.** Those are the natural v2.
+6. **Side labels are on by default, toggled with N.** Only players with the mod see them, and only on the block
+   under the crosshair.

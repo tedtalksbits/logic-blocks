@@ -1,1 +1,6 @@
-{}
+{
+	"key.category.logicblocks.main": "Logic Blocks",
+	"key.logicblocks.side_labels": "Side labels (N, E, S, W)",
+	"logicblocks.side_labels.on": "Logic Blocks: side labels on",
+	"logicblocks.side_labels.off": "Logic Blocks: side labels off"
+}

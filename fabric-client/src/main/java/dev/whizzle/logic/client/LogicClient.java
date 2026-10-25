@@ -1,19 +1,35 @@
 package dev.whizzle.logic.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import dev.whizzle.logic.client.labels.SideLabelRenderer;
 import dev.whizzle.logic.client.net.Messages;
 import dev.whizzle.logic.client.net.Net;
 import dev.whizzle.logic.client.ui.LogicScreen;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ServerboundPlayChannelEvents;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
-/** Wires the Logic Blocks client: the server opens the editor when you right-click a Logic Block. */
+/**
+ * Wires the Logic Blocks client: the server opens the editor when you right-click a Logic Block, and the Logic Block
+ * you're looking at shows N, E, S, W (toggle with a key, default N).
+ */
 public final class LogicClient implements ClientModInitializer {
+	public static final Logger LOG = LoggerFactory.getLogger("logicblocks");
+	private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("logicblocks", "main"));
+	static KeyMapping toggleLabels;
+
 	/** Server protocol from its welcome, or 0 before it answered. */
 	static int serverProtocol;
 
@@ -23,11 +39,29 @@ public final class LogicClient implements ClientModInitializer {
 			Messages.WELCOME, data -> serverProtocol = Messages.welcome(data),
 			Messages.OPEN, LogicClient::onOpen,
 			Messages.LIVE, data -> { if (Minecraft.getInstance().gui.screen() instanceof LogicScreen s) s.onLive(Messages.live(data)); },
-			Messages.RESULT, LogicClient::onResult));
-		ClientPlayConnectionEvents.JOIN.register((listener, sender, client) -> serverProtocol = 0);
+			Messages.RESULT, LogicClient::onResult,
+			Messages.IS, data -> SideLabelRenderer.onAnswer(Messages.is(data))));
+		ClientPlayConnectionEvents.JOIN.register((listener, sender, client) -> { serverProtocol = 0; SideLabelRenderer.reset(); });
+		ClientPlayConnectionEvents.DISCONNECT.register((listener, client) -> SideLabelRenderer.reset());
+
+		Settings.load();
+		toggleLabels = KeyMappingHelper.registerKeyMapping(
+			new KeyMapping("key.logicblocks.side_labels", InputConstants.Type.KEYBOARD, InputConstants.KEY_N, CATEGORY));
+		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+			while (toggleLabels.consumeClick()) toggleSideLabels(mc);
+			SideLabelRenderer.tick(mc);
+		});
+		LevelRenderEvents.COLLECT_SUBMITS.register(SideLabelRenderer::submit);
 		ServerboundPlayChannelEvents.REGISTER.register((listener, sender, client, channels) -> {
 			if (channels.contains(Identifier.fromNamespaceAndPath("logicblocks", Messages.HELLO))) Net.send(Messages.HELLO, Messages.hello());
 		});
+	}
+
+	private static void toggleSideLabels(Minecraft mc) {
+		Settings.sideLabels = !Settings.sideLabels;
+		Settings.save();
+		if (mc.player != null)
+			mc.player.sendOverlayMessage(Component.translatable(Settings.sideLabels ? "logicblocks.side_labels.on" : "logicblocks.side_labels.off"));
 	}
 
 	private static void onOpen(byte[] data) {

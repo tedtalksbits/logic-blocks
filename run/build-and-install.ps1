@@ -24,7 +24,7 @@ Push-Location $project
 $code = $LASTEXITCODE
 Pop-Location
 if ($code -ne 0) { Write-Host "PLUGIN BUILD OR TESTS FAILED (exit $code). Report: logic-plugin\build\reports\tests\test\index.html" -ForegroundColor Red; exit $code }
-Copy-Item -LiteralPath (Join-Path $project 'logic-plugin/build/libs/logic-plugin-0.1.0.jar') -Destination (Join-Path $server 'plugins/LogicBlocks.jar') -Force
+Get-ChildItem (Join-Path $project 'logic-plugin/build/libs') -Filter 'logic-plugin-*.jar' | Select-Object -First 1 | Copy-Item -Destination (Join-Path $server 'plugins/LogicBlocks.jar') -Force
 Write-Host 'Plugin installed on the test server.' -ForegroundColor Green
 
 Write-Host '2/2 Building the Fabric client mod...' -ForegroundColor Cyan

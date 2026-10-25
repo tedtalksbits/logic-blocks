@@ -191,6 +191,37 @@ class LogicManagerTest {
         assertFalse(reply(ClientBridge.RESULT).bool(), "malformed is reported, not thrown");
     }
 
+    byte[] query(int x, int y, int z) { return new Wire.Writer().int32(x).int32(y).int32(z).bytes(); }
+    long answers() { return sent.stream().filter(x -> x.channel().equals(ClientBridge.IS)).count(); }
+
+    @Test void queryTellsTheModWhichDaylightDetectorsAreLogicBlocks() {
+        place(alex, 3, 64, 3, LogicItem.create(Program.EMPTY));
+        world.getBlockAt(5, 64, 3).setType(Material.DAYLIGHT_DETECTOR);
+        bridge.onPluginMessageReceived(ClientBridge.QUERY, sam, query(3, 64, 3));
+        Wire.Reader r = reply(ClientBridge.IS);
+        assertEquals(3, r.int32()); assertEquals(64, r.int32()); assertEquals(3, r.int32());
+        assertTrue(r.bool(), "anyone may ask, not only the owner");
+        r.end();
+        bridge.onPluginMessageReceived(ClientBridge.QUERY, sam, query(5, 64, 3));
+        r = reply(ClientBridge.IS); r.int32(); r.int32(); r.int32();
+        assertFalse(r.bool(), "a plain daylight detector");
+
+        long before = answers();
+        bridge.onPluginMessageReceived(ClientBridge.QUERY, sam, query(3, 64, 30));
+        bridge.onPluginMessageReceived(ClientBridge.QUERY, sam, query(3000, 64, 3));
+        bridge.onPluginMessageReceived(ClientBridge.QUERY, sam, new byte[]{1});
+        assertEquals(before, answers(), "out of range, unloaded or malformed: no answer");
+    }
+
+    @Test void queriesHaveTheirOwnRateLimit() {
+        LogicNode n = place(alex, 3, 64, 3, LogicItem.create(Program.EMPTY));
+        for (int i = 0; i < 60; i++) bridge.onPluginMessageReceived(ClientBridge.QUERY, alex, query(3, 64, 3));
+        assertTrue(answers() >= 20 && answers() < 60, "at least a second's budget answered, the flood dropped: " + answers());
+        bridge.onPluginMessageReceived(ClientBridge.SAVE, alex, saveRequest(3, 64, 3, redWoolProgram()));
+        assertTrue(reply(ClientBridge.RESULT).bool(), "looking around never blocks a save");
+        assertEquals(redWoolProgram(), n.program());
+    }
+
     @Test void anyoneEditingModeLetsOthersSave() {
         ClientBridge open = new ClientBridge(manager, (p, c, d) -> sent.add(new Sent(p.getUniqueId(), c, d)), true);
         place(alex, 3, 64, 3, LogicItem.create(Program.EMPTY));
