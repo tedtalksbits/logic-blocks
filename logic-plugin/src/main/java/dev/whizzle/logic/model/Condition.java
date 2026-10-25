@@ -16,7 +16,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
     public enum Kind { BLOCK, SIGNAL, ITEMS, PLAYERS }
 
     public enum Op {
-        IS("is"), IS_NOT("is not"), EQ("="), NE("≠"), LT("<"), LE("≤"), GT(">"), GE("≥");
+        IS("is"), IS_NOT("is not"), EQ("="), NE("!="), LT("<"), LE("<="), GT(">"), GE(">=");
         public final String symbol;
         Op(String symbol) { this.symbol = symbol; }
         public boolean numeric() { return this != IS && this != IS_NOT; }
@@ -38,6 +38,13 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
         Objects.requireNonNull(kind); Objects.requireNonNull(side); Objects.requireNonNull(op);
         id = id == null ? "" : id.trim().toLowerCase(Locale.ROOT);
         if (id.startsWith("minecraft:")) id = id.substring("minecraft:".length());
+        // Fields a kind doesn't use are cleared, so equal rules compare and encode equal.
+        switch (kind) {
+            case BLOCK -> { number = 0; number2 = 0; }
+            case SIGNAL -> { id = ""; number2 = 0; }
+            case ITEMS -> number2 = 0;
+            case PLAYERS -> { side = Side.ANY; id = ""; }
+        }
     }
 
     public static Condition block(Side side, boolean is, String id) { return new Condition(Kind.BLOCK, side, is ? Op.IS : Op.IS_NOT, id, 0, 0); }
@@ -74,7 +81,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
 
     static boolean validId(String id) { return id.length() <= MAX_ID && id.matches("[a-z0-9_./-]+"); }
 
-    /** Human-readable, e.g. "north is red_wool", "signal west ≥ 5". */
+    /** Human-readable, e.g. "north is red_wool", "signal west >= 5". */
     public String describe() {
         return switch (kind) {
             case BLOCK -> side.label().toLowerCase(Locale.ROOT) + " " + op.symbol + " " + id;

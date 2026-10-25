@@ -13,7 +13,7 @@ public record Program(List<Rule> rules, Action otherwise) {
         public String describe() {
             StringBuilder sb = new StringBuilder(conditions.isEmpty() ? "always" : "when ");
             for (int i = 0; i < conditions.size(); i++) sb.append(i == 0 ? "" : " and ").append(conditions.get(i).describe());
-            return sb.append(" → ").append(action.describe()).toString();
+            return sb.append(" -> ").append(action.describe()).toString();
         }
     }
 
@@ -73,7 +73,7 @@ public record Program(List<Rule> rules, Action otherwise) {
     public List<String> describe() {
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < rules.size(); i++) lines.add((i + 1) + ". " + rules.get(i).describe());
-        lines.add("otherwise → " + otherwise.describe());
+        lines.add("otherwise -> " + otherwise.describe());
         return lines;
     }
 }

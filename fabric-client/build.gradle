@@ -1,0 +1,41 @@
+// Fabric client for Logic Blocks: the rule editor for servers running the Logic Blocks plugin.
+// Separate Gradle build (Loom needs a newer Gradle than the Paper plugin build).
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base { archivesName = 'logic-blocks-client' }
+
+// The rule model (dev.whizzle.logic.model) is shared source with the plugin, so both sides encode,
+// validate and evaluate rules with the same code.
+sourceSets {
+	main {
+		java {
+			srcDir '../logic-plugin/src/main/java'
+			include 'dev/whizzle/logic/client/**', 'dev/whizzle/logic/model/**'
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	testImplementation "org.junit.jupiter:junit-jupiter:6.1.3"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test { useJUnitPlatform() }
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	filesMatching("fabric.mod.json") { expand "version": version }
+}
+
+tasks.withType(JavaCompile).configureEach { it.options.release = 25 }
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

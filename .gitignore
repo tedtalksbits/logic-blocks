@@ -3,5 +3,6 @@ build/
 **/build/
 .idea/
 *.iml
-run/
+run/client-mods/
+run/*.jar
 .tools/

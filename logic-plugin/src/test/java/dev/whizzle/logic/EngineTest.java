@@ -121,8 +121,8 @@ class EngineTest {
         assertNull(p.problem());
         assertEquals("red_wool", p.rules().get(0).conditions().get(0).id(), "ids normalised");
         assertEquals(p, Program.decode(p.encode()));
-        assertEquals("1. when north is red_wool → output 15", p.describe().get(0));
-        assertEquals("3. always → toggle 1", p.describe().get(2));
+        assertEquals("1. when north is red_wool -> output 15", p.describe().get(0));
+        assertEquals("3. always -> toggle 1", p.describe().get(2));
 
         assertNotNull(new Program(List.of(rule(Action.set(16))), Action.set(0)).problem());
         assertNotNull(new Program(List.of(rule(Action.set(1), Condition.signal(Side.NORTH, Op.IS, 3))), Action.set(0)).problem());

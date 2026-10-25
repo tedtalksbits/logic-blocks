@@ -226,6 +226,7 @@ public final class SelfTestPlugin extends JavaPlugin {
     }
 
     String measureLoad() {
+        for (int i = 0; i < 60; i++) manager.tick();   // warm up (JIT)
         long best = Long.MAX_VALUE, total = 0;
         for (int i = 0; i < 40; i++) {
             long t = System.nanoTime();

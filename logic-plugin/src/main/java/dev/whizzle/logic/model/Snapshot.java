@@ -4,7 +4,7 @@ import java.util.*;
 
 /**
  * Everything a Logic Block can see at one moment, sent to the client while its editor is open so the client can
- * evaluate the rules being edited (with the same Engine) and show live ✓/✗ before saving.
+ * evaluate the rules being edited (with the same Engine) and show live true/false before saving.
  */
 public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>> containers, int[] playerDistances,
                        int output, int matched) implements Engine.Inputs {
