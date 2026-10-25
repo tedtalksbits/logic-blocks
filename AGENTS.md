@@ -20,16 +20,14 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 
 - v1 complete. Minecraft/Paper **26.3** (plugin also runs on 26.2: `api-version` is a minimum).
 - Plugin: 17 unit tests pass; the real-server self-test passes on Paper 26.2-130 and 26.3-211.
-- Client: 6 unit tests pass. Exercised end to end in a real **26.2** game. The **26.3** build (0.2.0) compiles with no
-  code changes but has **not been launched in 26.3 yet**; the owner is running `docs/TEST_PLAN.md` tests 2-6.
+- Client: 6 unit tests pass. Exercised end to end in real **26.2** and **26.3** games; on 26.3 (client 0.2.0, Paper
+  26.3-211) the owner ran every `docs/TEST_PLAN.md` test and all passed.
+- CI (GitHub Actions) green from its first run: plugin, client, real-Paper 26.3 self-test.
 
 ## Open items
 
-1. 26.3 client confirmation from the owner's test (above).
-2. CI: done (`docs/CI.md`): plugin build and tests, client build and tests, real-Paper 26.3 self-test. The self-test
-   script was verified on Paper 26.3-211; the first run on GitHub confirms the rest. Release jars on tags later. No
-   automatic deploy to the live server.
-3. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks, showing the sides in the
+1. Release jars on tags (CI itself is done, `docs/CI.md`). No automatic deploy to the live server.
+2. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks, showing the sides in the
    world while the editor is open.
 
 ## Decisions already made (don't reopen without asking)

@@ -1,8 +1,8 @@
 # Test plan: Logic Blocks
 
-Everything below has been run in a real client against a real Paper server (on 26.2), and the plugin passes an
-automated real-server self-test on both Paper 26.2 and 26.3. The 26.3 client compiles unchanged but has not been
-launched in 26.3 yet: tests 2-6 are the ones that prove it. This plan is for you to confirm it on your machine and judge how it feels.
+Everything below has passed in a real client against a real Paper server on 26.2 and on 26.3 (client 0.2.0, Paper
+26.3-211), and CI runs the automated real-server self-test on every push. Rerun it after changes to the editor or
+the rules, and to judge how it feels.
 
 ## Setup (once, about 5 minutes)
 
