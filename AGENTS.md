@@ -13,7 +13,8 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - `logic-plugin/src/main/java/dev/whizzle/logic/model/`: the rule language (conditions, actions, programs, encoding,
   `Engine`, `Snapshot`). Pure Java, **compiled into both** the plugin and the client (see `fabric-client/build.gradle`).
   Change it once; both sides follow.
-- `paper-selftest/`: development-only plugin that builds circuits on a real Paper server and checks the redstone.
+- `paper-selftest/`: development-only plugin that builds circuits on a real Paper server and checks the redstone,
+  including the sorter build from `docs/SORTER.md` (four scenarios side by side, about 2 minutes).
 - `ci/` and `.github/workflows/ci.yml`: GitHub Actions (plugin, client, real-Paper self-test). See `docs/CI.md`.
 
 ## Status (2026-10-25)
@@ -23,6 +24,9 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - Client: 6 unit tests pass. Exercised end to end in real **26.2** and **26.3** games; on 26.3 (client 0.2.0, Paper
   26.3-211) the owner ran every `docs/TEST_PLAN.md` test and all passed.
 - CI (GitHub Actions) green from its first run: plugin, client, real-Paper 26.3 self-test.
+- Item sorter build (`docs/SORTER.md`): two Logic Blocks per station, pure redstone. Proven by the self-test's
+  "sorter" steps on real Paper 26.3 (60 and 190 mixed items, no wrong items, 2.4 items/s, full chest passes items on).
+  Limit: feed through one hopper (a double-speed feed let one wrong item through in 68).
 - Side labels (plugin 0.2.0, client 0.3.0): the mod draws N, E, S, W over the Logic Block under the crosshair, asking
   the server via `query`/`is`; toggle key N. Each player sets their look in a settings screen with its own preview
   (`/logicblocks` or the editor's Labels button). Unit-tested (19 plugin, 19 client), the self-test passes, and the
@@ -50,6 +54,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | v1 inputs: block on a side, signal on a side, items in an adjacent container, players nearby | Owner: "fine for v1" |
 | Sides shown by labels the mod draws, not a texture | Owner wants no visual change to any vanilla block; a texture would hit every daylight detector |
 | Labels on by default, toggle key N, N/E/S/W only | Owner's call |
+| Logic Blocks stay pure redstone (no item-moving actions) | Owner's call |
 | Release tag = plugin version; the client keeps its own version; both jars in each release | Same as Blueprints (owner's call) |
 | Label look is a per-player client setting with an in-screen preview; no server-wide off switch | Owner: visual preferences belong to the player; players can't look around while in a menu |
 

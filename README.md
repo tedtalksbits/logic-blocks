@@ -46,6 +46,9 @@ same editor built for 26.2. Side labels need client 0.3.0 and plugin 0.2.0; olde
    item that's actually there.
 6. **Save**. The block's output changes within a tick or two.
 
+**Things to build:** an item sorter that also sorts tools and never jams on a full chest
+([docs/SORTER.md](docs/SORTER.md)).
+
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
 
 ### Rule reference

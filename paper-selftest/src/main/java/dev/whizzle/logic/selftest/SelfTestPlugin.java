@@ -208,10 +208,210 @@ public final class SelfTestPlugin extends JavaPlugin {
             return expect("wire", wire(k + 1, 0), 11);
         }));
 
-        // 10. Load: many busy blocks, timed.
+        // 10. Item sorter (docs/SORTER.md): stations of two Logic Blocks around a line of hoppers.
+        sorter();
+
+        // 11. Load: many busy blocks, timed.
         steps.add(new Step("load: 400 blocks x 8 rules x 3 conditions", this::buildLoad, 4, this::measureLoad));
 
         run(0);
+    }
+
+    // ---- item sorter ----
+
+    static final int SY = Y;   // the sorter's lowest layer (chests)
+    static final List<Material> MIX = List.of(Material.DIAMOND, Material.STONE, Material.EMERALD, Material.IRON_INGOT,
+        Material.DIAMOND_SWORD, Material.COBBLESTONE, Material.DIAMOND, Material.EMERALD, Material.DIAMOND_SWORD);
+
+    Block sb(int x, int y, int z) { return w.getBlockAt(x, SY + y, z); }
+
+    void hopper(Block b, BlockFace facing) {
+        b.setType(Material.HOPPER);
+        org.bukkit.block.data.type.Hopper d = (org.bukkit.block.data.type.Hopper) b.getBlockData();
+        d.setFacing(facing);
+        b.setBlockData(d);
+    }
+
+    static org.bukkit.inventory.Inventory inv(Block b) { return ((org.bukkit.block.Container) b.getState()).getInventory(); }
+
+    static int count(Block b, Material m) {
+        int n = 0;
+        for (ItemStack it : inv(b).getContents()) if (it != null && (m == null || it.getType() == m)) n += it.getAmount();
+        return n;
+    }
+
+    static Map<Material, Integer> contents(Block b) {
+        Map<Material, Integer> m = new TreeMap<>();
+        for (ItemStack it : inv(b).getContents()) if (it != null) m.merge(it.getType(), it.getAmount(), Integer::sum);
+        return m;
+    }
+
+    /**
+     * One station at x: line hopper S (y+3, facing east), LB1 north of S reading it, LB2 under LB1, hopper X under S
+     * pulling from it, a drain hopper D under X (never locked: it empties X even while X is locked), the chest under D.
+     *   LB1: S holds the target and nothing else, and LB2 isn't saying "full" (7) -> 15 (lock S); otherwise 0.
+     *   LB2: X is full -> 7 (tell LB1; X can't take more anyway); LB1 on -> 0 (unlock X); otherwise 15 (lock X).
+     */
+    void station(int x, int z, Material target) {
+        hopper(sb(x, 3, z), BlockFace.EAST);
+        hopper(sb(x, 2, z), BlockFace.DOWN);
+        hopper(sb(x, 1, z), BlockFace.DOWN);
+        sb(x, 0, z).setType(Material.CHEST);
+        String id = target.getKey().getKey();
+        int full = 5 * target.getMaxStackSize();
+        Block lb1 = sb(x, 3, z - 1), lb2 = sb(x, 2, z - 1);
+        lb1.setType(LogicItem.BLOCK);
+        manager.create(lb1, new Program(List.of(rule(Action.set(15),
+            Condition.items(Side.SOUTH, id, Op.GE, 1), Condition.items(Side.SOUTH, "*", Op.LE, 1), Condition.signal(Side.DOWN, Op.NE, 7))),
+            Action.set(0)), OWNER, "SelfTest");
+        lb2.setType(LogicItem.BLOCK);
+        manager.create(lb2, new Program(List.of(
+            rule(Action.set(7), Condition.items(Side.SOUTH, id, Op.GE, full)),
+            rule(Action.set(0), Condition.signal(Side.UP, Op.GT, 0))), Action.set(15)), OWNER, "SelfTest");
+    }
+
+    /** Feeder chest over a hopper pushing east into the first station; overflow chest after the last. */
+    Block line(int x0, int z, List<Material> targets) {
+        hopper(sb(x0 - 1, 3, z), BlockFace.EAST);
+        sb(x0 - 1, 4, z).setType(Material.CHEST);
+        for (int i = 0; i < targets.size(); i++) station(x0 + i, z, targets.get(i));
+        Block overflow = sb(x0 + targets.size(), 3, z);
+        overflow.setType(Material.CHEST);
+        return sb(x0 - 1, 4, z);
+    }
+
+    void sorter() {
+        List<Step> parts = new ArrayList<>();
+        int x0 = 300;
+        for (int cx = (x0 - 16) >> 4; cx <= (x0 + 60) >> 4; cx++) for (int cz = -1; cz <= 1; cz++) w.setChunkForceLoaded(cx, cz, true);
+        for (int x = x0 - 8; x <= x0 + 60; x++) for (int z = -6; z <= 8; z++) {
+            w.getBlockAt(x, SY - 1, z).setType(Material.STONE);
+            for (int y = SY; y < SY + 6; y++) w.getBlockAt(x, y, z).setType(Material.AIR);
+        }
+
+        // A: three stations, a mixed feed. Every item must end up in its own chest or the overflow, nothing stuck.
+        List<Material> targets = List.of(Material.DIAMOND, Material.EMERALD, Material.DIAMOND_SWORD);
+        int za = 0;
+        Map<Material, Integer> fed = new TreeMap<>();
+        long[] started = {0}, done = {-1};
+        parts.add(new Step("sorter: build 3 stations, feed a mix", () -> {
+            Block feeder = line(x0, za, targets);
+            for (int slot = 0; slot < 27; slot++) {
+                Material m = MIX.get(slot % MIX.size());
+                int n = m.getMaxStackSize() == 1 ? 1 : 1 + slot % 4;
+                inv(feeder).setItem(slot, new ItemStack(m, n));
+                fed.merge(m, n, Integer::sum);
+            }
+            started[0] = w.getFullTime();
+            int total = fed.values().stream().mapToInt(Integer::intValue).sum();
+            for (int t = 20; t <= 1400; t += 10) getServer().getScheduler().runTaskLater(this, () -> {
+                if (done[0] >= 0) return;
+                int delivered = count(sb(x0 + targets.size(), 3, za), null);
+                for (int i = 0; i < targets.size(); i++) delivered += count(sb(x0 + i, 0, za), null);
+                if (delivered == total) done[0] = w.getFullTime() - started[0];
+            }, t);
+        }, 1420, () -> {
+            List<String> problems = new ArrayList<>();
+            for (int i = 0; i < targets.size(); i++) {
+                Material t = targets.get(i);
+                Map<Material, Integer> got = contents(sb(x0 + i, 0, za));
+                if (!got.keySet().stream().allMatch(t::equals)) problems.add(t + " chest has " + got);
+                if (got.getOrDefault(t, 0) != fed.getOrDefault(t, 0)) problems.add(t + ": " + got.getOrDefault(t, 0) + " of " + fed.get(t));
+            }
+            Map<Material, Integer> over = contents(sb(x0 + targets.size(), 3, za));
+            for (Material t : targets) if (over.containsKey(t)) problems.add("overflow has " + over.get(t) + " " + t);
+            for (int i = -1; i < targets.size(); i++) if (count(sb(x0 + i, 3, za), null) > 0) problems.add("stuck in line hopper " + i + ": " + contents(sb(x0 + i, 3, za)));
+            for (int i = 0; i < targets.size(); i++) for (int y = 1; y <= 2; y++)
+                if (count(sb(x0 + i, y, za), null) > 0) problems.add("left in station " + i + " hopper at +" + y + ": " + contents(sb(x0 + i, y, za)));
+            int total = fed.values().stream().mapToInt(Integer::intValue).sum();
+            report.add("INFO sorter: fed " + fed + "; overflow got " + over + (done[0] >= 0
+                ? String.format(Locale.ROOT, "; all %d items placed in %d ticks (%.1f items/s)", total, done[0], total * 20.0 / done[0])
+                : "; not all items placed"));
+            return problems.isEmpty() ? null : String.join("; ", problems);
+        }));
+
+        // C: double-speed feed (a second chest over the first line hopper). Several items can sit in S at once; the
+        // station usually lets its item pass, but a new item can slip into the hopper's first slot while the Logic Blocks
+        // react (2-4 ticks) and be pulled instead. Reported, not failed: docs/SORTER.md says to feed through one hopper.
+        int zc = 12;
+        Map<Material, Integer> fedC = new TreeMap<>();
+        parts.add(new Step("sorter: double-speed feed (documented limit: feed through one hopper)", () -> {
+            Block feeder = line(x0, zc, targets);
+            Block second = sb(x0, 4, zc);
+            second.setType(Material.CHEST);
+            for (Block f : List.of(feeder, second)) for (int slot = 0; slot < 27; slot++) {
+                Material m = MIX.get((slot + (f == second ? 3 : 0)) % MIX.size());
+                int n = m.getMaxStackSize() == 1 ? 1 : 1 + slot % 4;
+                inv(f).setItem(slot, new ItemStack(m, n));
+                fedC.merge(m, n, Integer::sum);
+            }
+        }, 1500, () -> {
+            List<String> problems = new ArrayList<>();
+            int sorted = 0, missed = 0;
+            Map<Material, Integer> over = contents(sb(x0 + targets.size(), 3, zc));
+            for (int i = 0; i < targets.size(); i++) {
+                Material t = targets.get(i);
+                Map<Material, Integer> got = contents(sb(x0 + i, 0, zc));
+                if (!got.keySet().stream().allMatch(t::equals)) problems.add(t + " chest has " + got);
+                sorted += got.getOrDefault(t, 0);
+                missed += over.getOrDefault(t, 0);
+            }
+            report.add(String.format(Locale.ROOT, "INFO sorter double-speed feed: %d target items sorted, %d went past to the overflow (%.0f%%), wrong items: %s; fed %s",
+                sorted, missed, 100.0 * missed / Math.max(1, sorted + missed), problems.isEmpty() ? "none" : String.join("; ", problems), fedC));
+            return null;
+        }));
+
+        // D: a long single-hopper feed (the documented way to feed the sorter).
+        int zd = 18;
+        Map<Material, Integer> fedD = new TreeMap<>();
+        parts.add(new Step("sorter: long single feed, no wrong items", () -> {
+            Block feeder = line(x0, zd, targets);
+            Block chest2 = sb(x0 - 1, 5, zd);
+            // A tall feed: two chests stacked (the top one drains into the lower via a hopper).
+            hopper(sb(x0 - 1, 5, zd), BlockFace.DOWN);
+            chest2 = sb(x0 - 1, 6, zd);
+            chest2.setType(Material.CHEST);
+            for (Block f : List.of(feeder, chest2)) for (int slot = 0; slot < 27; slot++) {
+                Material m = MIX.get((slot * 7 + (f == chest2 ? 5 : 0)) % MIX.size());
+                int n = m.getMaxStackSize() == 1 ? 1 : 1 + (slot * 5) % 7;
+                inv(f).setItem(slot, new ItemStack(m, n));
+                fedD.merge(m, n, Integer::sum);
+            }
+        }, 2600, () -> {
+            List<String> problems = new ArrayList<>();
+            int sorted = 0, missed = 0, wrong = 0;
+            Map<Material, Integer> over = contents(sb(x0 + targets.size(), 3, zd));
+            for (int i = 0; i < targets.size(); i++) {
+                Material t = targets.get(i);
+                Map<Material, Integer> got = contents(sb(x0 + i, 0, zd));
+                for (var e : got.entrySet()) if (e.getKey() != t) wrong += e.getValue();
+                if (!got.keySet().stream().allMatch(t::equals)) problems.add(t + " chest has " + got);
+                sorted += got.getOrDefault(t, 0);
+                missed += over.getOrDefault(t, 0);
+            }
+            int total = fedD.values().stream().mapToInt(Integer::intValue).sum();
+            report.add(String.format(Locale.ROOT, "INFO sorter long feed: %d items, %d sorted, %d went past, %d wrong; fed %s", total, sorted, missed, wrong, fedD));
+            return problems.isEmpty() ? null : String.join("; ", problems);
+        }));
+
+        // B: the station's chest and hopper are full. Its items must pass on to the overflow instead of jamming the line.
+        int zb = 6;
+        parts.add(new Step("sorter: full chest passes items on, no jam", () -> {
+            Block feeder = line(x0, zb, List.of(Material.DIAMOND));
+            for (int slot = 0; slot < 27; slot++) inv(sb(x0, 0, zb)).setItem(slot, new ItemStack(Material.DIAMOND, 64));
+            for (int y = 1; y <= 2; y++) for (int slot = 0; slot < 5; slot++) inv(sb(x0, y, zb)).setItem(slot, new ItemStack(Material.DIAMOND, 64));
+            for (int slot = 0; slot < 10; slot++) inv(feeder).setItem(slot, new ItemStack(slot % 2 == 0 ? Material.DIAMOND : Material.STONE, 2));
+        }, 400, () -> {
+            Map<Material, Integer> over = contents(sb(x0 + 1, 3, zb));
+            int stuck = count(sb(x0, 3, zb), null) + count(sb(x0 - 1, 3, zb), null) + count(sb(x0 - 1, 4, zb), null);
+            report.add("INFO sorter full chest: overflow got " + over + ", still in the line " + stuck);
+            return over.getOrDefault(Material.DIAMOND, 0) == 10 && over.getOrDefault(Material.STONE, 0) == 10 && stuck == 0 ? null
+                : "expected 10 diamonds and 10 stone in the overflow, nothing stuck";
+        }));
+            // All scenarios run side by side: build them together, wait for the slowest, then check each.
+        int wait = parts.stream().mapToInt(Step::ticks).max().orElse(1);
+        steps.add(new Step("sorter: build " + parts.size() + " scenarios", () -> parts.forEach(p -> p.action().run()), wait, () -> null));
+        for (Step p : parts) steps.add(new Step(p.name(), () -> { }, 1, p.check()));
     }
 
     void buildLoad() {
