@@ -14,8 +14,8 @@ otherwise                       -> output 0
 The first rule that matches decides the output. You write the rules in an editor (Fabric client mod) that shows,
 next to every condition, what the block sees right now and whether it's true, before you save.
 
-- **Paper plugin** (`logic-plugin/`): Paper 26.2, Java 25. Runs the rules and owns all the data.
-- **Fabric client mod** (`fabric-client/`): Minecraft 26.2, Fabric Loader 0.19.5, Fabric API. The rule editor.
+- **Paper plugin** (`logic-plugin/`): Paper 26.3 (also runs on 26.2), Java 25. Runs the rules and owns all the data.
+- **Fabric client mod** (`fabric-client/`): Minecraft 26.3, Fabric Loader 0.19.5, Fabric API. The rule editor.
   Players without it can still place and use Logic Blocks; right-clicking shows the rules in chat.
 
 ## Install
@@ -23,8 +23,9 @@ next to every condition, what the block sees right now and whether it's true, be
 **Server:** copy `logic-plugin/build/libs/logic-plugin-0.1.0.jar` into `plugins/` and restart. Settings are in
 `plugins/LogicBlocks/config.yml`.
 
-**Each player who wants to edit rules:** Fabric for Minecraft 26.2 (Loader 0.19.5), then put
-`logic-blocks-client-0.1.0.jar` and `fabric-api-0.161.0+26.2.jar` in `.minecraft/mods`.
+**Each player who wants to edit rules:** Fabric for Minecraft 26.3 (Loader 0.19.5), then put
+`logic-blocks-client-0.2.0.jar` and `fabric-api-0.164.0+26.3.jar` in `.minecraft/mods`. (Client 0.1.0 is the
+same editor built for 26.2.)
 
 ## Using it
 
@@ -101,7 +102,7 @@ otherwise **Keep**, is a door latch in one block.
 Plugin (from the repo root): `gradle build` with Java 25. It runs the tests and writes
 `logic-plugin/build/libs/logic-plugin-0.1.0.jar`.
 
-Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.1.0.jar`. The
+Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.2.0.jar`. The
 client compiles the plugin's rule model (`dev.whizzle.logic.model`) from `logic-plugin/src`, so both sides share
 one implementation of the rules, their encoding and their evaluation.
 

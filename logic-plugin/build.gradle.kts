@@ -8,11 +8,11 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.2.build.130-stable")
-    testImplementation("io.papermc.paper:paper-api:26.2.build.130-stable")
+    compileOnly("io.papermc.paper:paper-api:26.3.build.211-stable")
+    testImplementation("io.papermc.paper:paper-api:26.3.build.211-stable")
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
     testImplementation("org.mockito:mockito-core:5.20.0")
-    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v26.2:4.116.1")
+    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v26.3:4.118.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

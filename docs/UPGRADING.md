@@ -1,6 +1,7 @@
 # Upgrading to a new Minecraft version
 
-Checklist for moving Logic Blocks to a new release (26.3 and later). Same shape as Blueprints' `docs/UPGRADING.md`.
+Checklist for moving Logic Blocks to a new release. Currently on 26.3 (moved from 26.2 with no code changes:
+version pins only, Loom 1.19.2 with Gradle 9.8.0 for the client). Same shape as Blueprints' `docs/UPGRADING.md`.
 
 ## What breaks
 
@@ -23,11 +24,11 @@ Checklist for moving Logic Blocks to a new release (26.3 and later). Same shape 
 
 | File | Setting |
 |---|---|
-| `logic-plugin/build.gradle.kts` | `paper-api`, MockBukkit (`mockbukkit-v26.2`, named for the Minecraft version) |
+| `logic-plugin/build.gradle.kts` | `paper-api`, MockBukkit (`mockbukkit-v26.3`, named for the Minecraft version) |
 | `logic-plugin/src/main/resources/plugin.yml` | `api-version` (a minimum) |
 | `paper-selftest/build.gradle.kts` | `paper-api` |
 | `fabric-client/gradle.properties` | `minecraft_version`, `loader_version`, `loom_version`, `fabric_api_version` |
-| `fabric-client/src/main/resources/fabric.mod.json` | `"minecraft": "~26.2"` |
+| `fabric-client/src/main/resources/fabric.mod.json` | `"minecraft": "~26.3"` |
 
 ## Steps
 

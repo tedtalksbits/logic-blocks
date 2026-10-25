@@ -1,7 +1,8 @@
 # Test plan: Logic Blocks
 
-Everything below has been run in a real 26.2 client against a real Paper server, and the plugin also passes an
-automated real-server self-test. This plan is for you to confirm it on your machine and judge how it feels.
+Everything below has been run in a real client against a real Paper server (on 26.2), and the plugin passes an
+automated real-server self-test on both Paper 26.2 and 26.3. The 26.3 client compiles unchanged but has not been
+launched in 26.3 yet: tests 2-6 are the ones that prove it. This plan is for you to confirm it on your machine and judge how it feels.
 
 ## Setup (once, about 5 minutes)
 
@@ -9,9 +10,9 @@ automated real-server self-test. This plan is for you to confirm it on your mach
 2. Double-click `run\build-and-install.cmd` in this project. It builds and tests the plugin, installs it on the
    Blueprints test server (`..\blueprints-mc\run\local-paper`), builds the client mod, and copies it to
    `run\client-mods\`.
-3. Copy `run\client-mods\logic-blocks-client-0.1.0.jar` into `%APPDATA%\.minecraft\mods\` next to the Blueprints
+3. Copy `run\client-mods\logic-blocks-client-0.2.0.jar` into `%APPDATA%\.minecraft\mods\` next to the Blueprints
    mod and Fabric API you already have.
-4. Start the server, launch **fabric-loader-26.2**, join. In creative or survival, `/logic give` gives you a few.
+4. Start the server, launch **fabric-loader-26.3**, join. In creative or survival, `/logic give` gives you a few.
 
 ## Tests
 

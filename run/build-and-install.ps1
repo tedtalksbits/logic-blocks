@@ -39,5 +39,5 @@ New-Item -ItemType Directory -Force -Path $mods | Out-Null
 Get-ChildItem $mods -Filter '*.jar' | Remove-Item -Force
 Get-ChildItem (Join-Path $client 'build/libs') -Filter 'logic-blocks-client-*.jar' | Where-Object { $_.Name -notmatch 'sources' } | Copy-Item -Destination $mods
 Write-Host "Client mod copied to: $mods" -ForegroundColor Green
-Write-Host 'Copy it into your Fabric 26.2 mods folder (next to Fabric API and the Blueprints mod).' -ForegroundColor Green
+Write-Host 'Copy it into your Fabric 26.3 mods folder (next to Fabric API and the Blueprints mod).' -ForegroundColor Green
 Write-Host 'BUILD PASSED. Start the server with start.cmd in blueprints-mc\run\local-paper.' -ForegroundColor Green
