@@ -27,17 +27,18 @@ version pins only, Loom 1.19.2 with Gradle 9.8.0 for the client). Same shape as 
 | `logic-plugin/build.gradle.kts` | `paper-api`, MockBukkit (`mockbukkit-v26.3`, named for the Minecraft version) |
 | `logic-plugin/src/main/resources/plugin.yml` | `api-version` (a minimum) |
 | `paper-selftest/build.gradle.kts` | `paper-api` |
+| `.github/workflows/ci.yml` | `PAPER_VERSION`, `PAPER_BUILD`, `PAPER_SHA256` (the build CI self-tests on) |
 | `fabric-client/gradle.properties` | `minecraft_version`, `loader_version`, `loom_version`, `fabric_api_version` |
 | `fabric-client/src/main/resources/fabric.mod.json` | `"minecraft": "~26.3"` |
 
 ## Steps
 
 1. Update the plugin pins; `gradle build` (unit tests).
-2. Run the self-test: copy `logic-plugin/build/libs/logic-plugin-*.jar` and
+2. Run the self-test (`ci/run-selftest.sh <paper.jar> <new-folder>` does all of this): copy `logic-plugin/build/libs/logic-plugin-*.jar` and
    `paper-selftest/build/libs/paper-selftest-*.jar` into a throwaway Paper server (flat world) and start it with
    `java -Dlogic.selftest.exit=true -jar paper-<version>.jar --nogui`. It builds circuits around Logic Blocks,
    checks what the redstone actually does, writes `plugins/LogicSelfTest/report.txt`, and stops. It must end with
-   `SELFTEST PASSED`.
+   `SELFTEST PASSED`. Then update the Paper pins in `.github/workflows/ci.yml`.
 3. Update the client pins; `cd fabric-client && gradlew build`; fix compile errors (GUI classes move between
    releases; see Blueprints' `docs/UPGRADING.md` for the 26.x names). The client has no mixins.
 4. Walk `docs/TEST_PLAN.md` tests 2-4 and 6 in a real client: the editor opens, live readings update, saving changes

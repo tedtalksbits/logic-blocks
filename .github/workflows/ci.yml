@@ -1,0 +1,141 @@
+# Builds and tests Logic Blocks on every push to main and every pull request:
+#   plugin:   Paper plugin + self-test plugin, unit tests (MockBukkit)
+#   client:   Fabric client mod, unit tests
+#   selftest: the real-redstone self-test on a real Paper server (paper-selftest/, ci/run-selftest.sh)
+# The jars are attached to each run (Actions tab > the run > Artifacts). Nothing is deployed anywhere.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'run/**']
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'run/**']
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '25'
+  # The Paper build the self-test runs on. Update all three together (docs/UPGRADING.md).
+  PAPER_VERSION: '26.3'
+  PAPER_BUILD: '211'
+  PAPER_SHA256: f3a5953094696578193b38fa2831e86db254dfbf4817b1ac6cfca55a2d18ca94
+
+jobs:
+  plugin:
+    name: Plugin build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build and test
+        run: ./gradlew build --stacktrace
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-test-reports
+          path: logic-plugin/build/reports/tests/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7
+        with:
+          name: logic-plugin
+          path: logic-plugin/build/libs/logic-plugin-*.jar
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: paper-selftest
+          path: paper-selftest/build/libs/paper-selftest-*.jar
+          if-no-files-found: error
+
+  selftest:
+    name: Self-test on a real Paper server
+    needs: plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: logic-plugin
+          path: logic-plugin/build/libs
+      - uses: actions/download-artifact@v8
+        with:
+          name: paper-selftest
+          path: paper-selftest/build/libs
+      # The Paper jar plus the vanilla jar and libraries Paper fetches on first start, so reruns don't download them.
+      - name: Cache Paper
+        uses: actions/cache@v6
+        with:
+          path: .paper
+          key: paper-${{ env.PAPER_VERSION }}-${{ env.PAPER_BUILD }}
+      - name: Download Paper
+        run: ci/download-paper.sh "$PAPER_VERSION" "$PAPER_BUILD" "$PAPER_SHA256" .paper/paper.jar
+      - name: Run the self-test
+        env:
+          PAPER_SEED_DIR: .paper
+        run: ci/run-selftest.sh .paper/paper.jar "$RUNNER_TEMP/paper-selftest"
+      - name: Keep Paper's downloads for the cache
+        if: always()
+        run: |
+          for d in cache versions libraries; do
+            if [ ! -d ".paper/$d" ] && [ -d "$RUNNER_TEMP/paper-selftest/$d" ]; then
+              cp -r "$RUNNER_TEMP/paper-selftest/$d" .paper/
+            fi
+          done
+      - name: Self-test report and server log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: selftest-report
+          path: |
+            ${{ runner.temp }}/paper-selftest/plugins/LogicSelfTest/report.txt
+            ${{ runner.temp }}/paper-selftest/server.log
+          if-no-files-found: ignore
+
+  client:
+    name: Client build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: fabric-client
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build and test
+        run: ./gradlew build --stacktrace
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-test-reports
+          path: fabric-client/build/reports/tests/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7
+        with:
+          name: logic-blocks-client
+          # The remapped mod jar only, not -sources.
+          path: |
+            fabric-client/build/libs/logic-blocks-client-*.jar
+            !fabric-client/build/libs/*-sources.jar
+          if-no-files-found: error

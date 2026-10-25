@@ -1,5 +1,7 @@
 # Logic Blocks
 
+[![CI](https://github.com/tedtalksbits/logic-blocks/actions/workflows/ci.yml/badge.svg)](https://github.com/tedtalksbits/logic-blocks/actions/workflows/ci.yml)
+
 Redstone you can program with simple rules. A **Logic Block** is a crafted block that checks what's around it
 and outputs a redstone signal from 0 to 15:
 
