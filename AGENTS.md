@@ -55,7 +55,9 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 
 ## Working rules
 
-- Commit locally; **the owner pushes** to GitHub.
+- Commit locally; **the owner pushes** to GitHub. Agents commit as `Claude <noreply@anthropic.com>` (pass it per
+  commit with `git -c user.name=Claude -c user.email=noreply@anthropic.com`; don't change the repo's git config, the
+  owner commits as himself).
 - Put anything that needs the owner's decision at the top of your report, clearly marked. Keep reports short; no
   "•" separators.
 - Test on a real Paper server before claiming redstone behaviour works. MockBukkit doesn't simulate redstone.
