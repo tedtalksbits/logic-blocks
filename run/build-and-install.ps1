@@ -1,8 +1,14 @@
 $ErrorActionPreference = 'Stop'
 # Builds Logic Blocks with the Blueprints project's tools, installs the plugin on the Blueprints test server,
-# and copies the client mod to run\client-mods. Expects blueprints-mc next to this project.
+# and copies the client mod to run\client-mods. Expects blueprints-mc next to this project (or around it).
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+# blueprints-mc is usually next to this project; also accept this project sitting anywhere inside it.
 $blueprints = [IO.Path]::GetFullPath((Join-Path $project '../blueprints-mc'))
+if (-not (Test-Path (Join-Path $blueprints '.tools'))) {
+    $dir = Split-Path $project -Parent
+    while ($dir -and -not (Test-Path (Join-Path $dir '.tools/jdk'))) { $dir = Split-Path $dir -Parent }
+    if ($dir) { $blueprints = $dir }
+}
 $server = Join-Path $blueprints 'run/local-paper'
 if (-not (Test-Path $server)) { Write-Host "Can't find the test server at $server" -ForegroundColor Red; exit 1 }
 try { $s = [IO.File]::Open((Join-Path $server 'blueprints-test-world/session.lock'), 'Open', 'ReadWrite', 'None'); $s.Close() }
