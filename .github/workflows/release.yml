@@ -1,0 +1,66 @@
+# Push a tag named after the plugin version (v0.2.0 for plugin 0.2.0) to publish a GitHub release with the plugin
+# jar and the client mod jar. The client keeps its own version; both versions are named in the release notes.
+# It runs the whole CI workflow first (builds, unit tests, real-Paper self-test) and publishes only if that passes.
+# Nothing is deployed to any server.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish the release
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: logic-plugin
+          path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: logic-blocks-client
+          path: dist
+      - name: Check the tag matches the plugin version
+        id: versions
+        run: |
+          plugin=$(sed -n 's/^ *version = "\(.*\)"/\1/p' build.gradle.kts | head -n 1)
+          client=$(sed -n 's/^version=//p' fabric-client/gradle.properties | head -n 1)
+          minecraft=$(sed -n 's/^minecraft_version=//p' fabric-client/gradle.properties | head -n 1)
+          echo "plugin $plugin, client $client, Minecraft $minecraft, tag $GITHUB_REF_NAME"
+          if [ "$GITHUB_REF_NAME" != "v$plugin" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match the plugin version $plugin (build.gradle.kts). Tag v$plugin, or bump the version first."
+            exit 1
+          fi
+          for jar in "dist/logic-plugin-$plugin.jar" "dist/logic-blocks-client-$client.jar"; do
+            [ -f "$jar" ] || { echo "::error::Missing $jar"; ls -la dist; exit 1; }
+          done
+          {
+            echo "plugin=$plugin"
+            echo "client=$client"
+            echo "minecraft=$minecraft"
+          } >> "$GITHUB_OUTPUT"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN: ${{ steps.versions.outputs.plugin }}
+          CLIENT: ${{ steps.versions.outputs.client }}
+          MINECRAFT: ${{ steps.versions.outputs.minecraft }}
+        run: |
+          notes="Paper plugin $PLUGIN and Fabric client mod $CLIENT, for Minecraft $MINECRAFT.
+
+          - Server: put logic-plugin-$PLUGIN.jar in plugins/ and restart.
+          - Players who want the rule editor and side labels: logic-blocks-client-$CLIENT.jar plus Fabric API in .minecraft/mods."
+          gh release create "$GITHUB_REF_NAME" --title "Logic Blocks $GITHUB_REF_NAME" --notes "$notes" --generate-notes \
+            "dist/logic-plugin-$PLUGIN.jar" "dist/logic-blocks-client-$CLIENT.jar"

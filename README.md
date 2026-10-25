@@ -22,6 +22,9 @@ next to every condition, what the block sees right now and whether it's true, be
 
 ## Install
 
+Ready-made jars are on the [Releases](https://github.com/tedtalksbits/logic-blocks/releases) page (the release is
+named after the plugin version; the client's version is in the notes), or build them yourself (below).
+
 **Server:** copy `logic-plugin/build/libs/logic-plugin-0.2.0.jar` into `plugins/` and restart. Settings are in
 `plugins/LogicBlocks/config.yml`.
 

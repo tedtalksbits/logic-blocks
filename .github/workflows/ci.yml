@@ -3,6 +3,7 @@
 #   client:   Fabric client mod, unit tests
 #   selftest: the real-redstone self-test on a real Paper server (paper-selftest/, ci/run-selftest.sh)
 # The jars are attached to each run (Actions tab > the run > Artifacts). Nothing is deployed anywhere.
+# release.yml reuses this workflow before publishing a release.
 name: CI
 
 on:
@@ -12,6 +13,8 @@ on:
   pull_request:
     paths-ignore: ['**.md', 'docs/**', 'run/**']
   workflow_dispatch:
+  # The release workflow runs all of this first and publishes only if it passes.
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.ref }}

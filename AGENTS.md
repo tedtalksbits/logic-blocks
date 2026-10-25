@@ -31,8 +31,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 ## Open items
 
 1. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
-2. Release jars on tags (CI itself is done, `docs/CI.md`). No automatic deploy to the live server.
-3. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks.
+2. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks.
 
 ## Decisions already made (don't reopen without asking)
 
@@ -51,6 +50,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | v1 inputs: block on a side, signal on a side, items in an adjacent container, players nearby | Owner: "fine for v1" |
 | Sides shown by labels the mod draws, not a texture | Owner wants no visual change to any vanilla block; a texture would hit every daylight detector |
 | Labels on by default, toggle key N, N/E/S/W only | Owner's call |
+| Release tag = plugin version; the client keeps its own version; both jars in each release | Same as Blueprints (owner's call) |
 | Label look is a per-player client setting with an in-screen preview; no server-wide off switch | Owner: visual preferences belong to the player; players can't look around while in a menu |
 
 ## Working rules
@@ -68,7 +68,8 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - Self-test: `ci/run-selftest.sh <paper.jar> <new-folder>` (Linux, Git Bash, CI) sets up a throwaway flat-world
   server, runs it with `-Dlogic.selftest.exit=true`, and fails unless `plugins/LogicSelfTest/report.txt` ends
   `SELFTEST PASSED`. Offline, add `PAPER_SEED_DIR=<existing server folder>`.
-- CI runs all three on every push to `main` (`docs/CI.md`).
+- CI runs all three on every push to `main` (`docs/CI.md`). Releases: tag `v<plugin version>`; the release
+  workflow reruns CI and publishes both jars (`docs/CI.md`, "Releases"). No automatic deploy to the live server.
 - Windows: `run\build-and-install.cmd` builds both. It currently borrows the JDK and Gradle cache from a sibling
   `blueprints-mc\.tools` folder and installs onto the owner's local test server there; if that folder is gone,
   point it at any JDK 25 and Gradle instead.
