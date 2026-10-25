@@ -66,6 +66,13 @@ tags, a dim copy shows through anything placed on top. North is red, like a comp
 `LevelRenderEvents.COLLECT_SUBMITS` and Minecraft's `submitText` (`SideLabelRenderer`); this is the part to check
 first on a Minecraft update. A key (default N) toggles them, saved in `config/logicblocks.properties`.
 
+How they look is each player's choice (`LabelStyle`: size, height, distance from the centre, north and other colours,
+backing), set in `LabelSettingsScreen` (the editor's **Labels** button, or `/logicblocks`) and saved in the same file.
+There is no server-side setting: it's all visual preference. A menu stops the player turning to look, so the screen
+has its own preview instead of showing the world: the block from above (north up, its real top texture) and from the
+south (height, with a "1 block" line where a block placed on top would end). Both views place the letters with the
+same `SideLabels` maths the world uses.
+
 ## Editor
 
 The client opens when the server sends `open` after a right-click; it never asks on its own. While open, the

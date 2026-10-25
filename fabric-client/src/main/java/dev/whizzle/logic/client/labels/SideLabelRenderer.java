@@ -24,9 +24,6 @@ import net.minecraft.world.phys.Vec3;
  * camera, readable through blocks (dimmed), full brightness.
  */
 public final class SideLabelRenderer {
-	/** Same scale as vanilla name tags: one font pixel is 1/40 of a block. */
-	private static final float SCALE = 0.025F;
-	private static final int BACKGROUND = 0x60000000;
 
 	private static final LogicBlockLookup LOOKUP = new LogicBlockLookup();
 	private static long ticks;
@@ -62,16 +59,19 @@ public final class SideLabelRenderer {
 		PoseStack pose = context.poseStack();
 		SubmitNodeCollector out = context.submitNodeCollector();
 		Vec3 eye = camera.pos;
-		for (SideLabels.Label label : SideLabels.around(pos.getX(), pos.getY(), pos.getZ())) {
+		LabelStyle style = Settings.labelStyle;
+		float scale = (float) (SideLabels.FONT_PIXEL * style.size());
+		int background = style.backgroundArgb();
+		for (SideLabels.Label label : SideLabels.around(pos.getX(), pos.getY(), pos.getZ(), style)) {
 			FormattedCharSequence text = Component.literal(label.text()).getVisualOrderText();
 			float x = -font.width(text) / 2.0F, y = -4;
 			pose.pushPose();
 			pose.translate(label.x() - eye.x, label.y() - eye.y, label.z() - eye.z);
 			pose.rotate(camera.orientation);
-			pose.scale(SCALE, -SCALE, SCALE);
+			pose.scale(scale, -scale, scale);
 			// Like a name tag: a dim copy with a backing shows through blocks, the bright copy where it's in view.
 			out.submitText(pose, x, y, text, false, Font.DisplayMode.SEE_THROUGH, LightCoordsUtil.FULL_BRIGHT,
-				(label.color() & 0x00FFFFFF) | 0x80000000, BACKGROUND, 0);
+				(label.color() & 0x00FFFFFF) | 0x80000000, background, 0);
 			out.submitText(pose, x, y, text, false, Font.DisplayMode.NORMAL, LightCoordsUtil.FULL_BRIGHT, label.color(), 0, 0);
 			pose.popPose();
 		}

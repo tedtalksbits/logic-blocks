@@ -24,12 +24,14 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   26.3-211) the owner ran every `docs/TEST_PLAN.md` test and all passed.
 - CI (GitHub Actions) green from its first run: plugin, client, real-Paper 26.3 self-test.
 - Side labels (plugin 0.2.0, client 0.3.0): the mod draws N, E, S, W over the Logic Block under the crosshair, asking
-  the server via `query`/`is`; toggle key N. Unit-tested (19 plugin, 12 client) and the self-test passes, but **not
-  yet seen in a real 26.3 game** (`docs/TEST_PLAN.md` tests 15-20). See `docs/DESIGN.md`, "Side labels".
+  the server via `query`/`is`; toggle key N. Each player sets their look in a settings screen with its own preview
+  (`/logicblocks` or the editor's Labels button). Unit-tested (19 plugin, 19 client) and the self-test passes, but
+  **not yet seen in a real 26.3 game** (`docs/TEST_PLAN.md` tests 15-25). See `docs/DESIGN.md`, "Side labels".
 
 ## Open items
 
-1. Side labels: the owner's real-game check (tests 15-20); adjust size, height or colours from what they see.
+1. Side labels: the owner's real-game check (tests 15-25). Mod Menu integration for the settings screen once a
+   build can reach its Maven repo (not in the offline cache).
 2. Release jars on tags (CI itself is done, `docs/CI.md`). No automatic deploy to the live server.
 3. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks.
 
@@ -50,6 +52,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | v1 inputs: block on a side, signal on a side, items in an adjacent container, players nearby | Owner: "fine for v1" |
 | Sides shown by labels the mod draws, not a texture | Owner wants no visual change to any vanilla block; a texture would hit every daylight detector |
 | Labels on by default, toggle key N, N/E/S/W only | Owner's call |
+| Label look is a per-player client setting with an in-screen preview; no server-wide off switch | Owner: visual preferences belong to the player; players can't look around while in a menu |
 
 ## Working rules
 

@@ -35,7 +35,8 @@ same editor built for 26.2. Side labels need client 0.3.0 and plugin 0.2.0; olde
    middle (changeable in `config.yml`). Operators can use `/logic give`.
 2. **Place** it. It looks like a daylight detector but ignores daylight.
 3. **Look at it** (with the mod): **N, E, S, W** float over its top, north in red, so you can see which side is
-   which. Press **N** to turn the labels off or on (rebind it under Controls > Logic Blocks).
+   which. Press **N** to turn the labels off or on (rebind it under Controls > Logic Blocks). Their size, height,
+   distance from the centre, colours and backing are yours to change: **Labels** in the editor, or `/logicblocks`.
 4. **Right-click** it to open the editor (sneak + right-click with a block places against it instead).
 5. **+ Rule**, then click the buttons to cycle through choices and type ids and numbers. Each condition shows
    `now: <what the block sees> (true/false)`; the rule that's true right now is green. **use** fills in the block or

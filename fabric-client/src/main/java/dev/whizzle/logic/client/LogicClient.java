@@ -4,8 +4,11 @@ import com.mojang.blaze3d.platform.InputConstants;
 import dev.whizzle.logic.client.labels.SideLabelRenderer;
 import dev.whizzle.logic.client.net.Messages;
 import dev.whizzle.logic.client.net.Net;
+import dev.whizzle.logic.client.ui.LabelSettingsScreen;
 import dev.whizzle.logic.client.ui.LogicScreen;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -29,6 +32,8 @@ public final class LogicClient implements ClientModInitializer {
 	public static final Logger LOG = LoggerFactory.getLogger("logicblocks");
 	private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("logicblocks", "main"));
 	static KeyMapping toggleLabels;
+	/** Set by the /logicblocks command; the screen opens on the next tick, after the chat screen has closed. */
+	private static boolean openSettings;
 
 	/** Server protocol from its welcome, or 0 before it answered. */
 	static int serverProtocol;
@@ -47,7 +52,10 @@ public final class LogicClient implements ClientModInitializer {
 		Settings.load();
 		toggleLabels = KeyMappingHelper.registerKeyMapping(
 			new KeyMapping("key.logicblocks.side_labels", InputConstants.Type.KEYBOARD, InputConstants.KEY_N, CATEGORY));
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) ->
+			dispatcher.register(ClientCommands.literal("logicblocks").executes(c -> { openSettings = true; return 1; })));
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+			if (openSettings) { openSettings = false; openSettings(null); }
 			while (toggleLabels.consumeClick()) toggleSideLabels(mc);
 			SideLabelRenderer.tick(mc);
 		});
@@ -55,6 +63,11 @@ public final class LogicClient implements ClientModInitializer {
 		ServerboundPlayChannelEvents.REGISTER.register((listener, sender, client, channels) -> {
 			if (channels.contains(Identifier.fromNamespaceAndPath("logicblocks", Messages.HELLO))) Net.send(Messages.HELLO, Messages.hello());
 		});
+	}
+
+	/** The side-label settings, returning to {@code parent} (or the game) when done. */
+	public static void openSettings(net.minecraft.client.gui.screens.Screen parent) {
+		Minecraft.getInstance().gui.setScreen(new LabelSettingsScreen(parent, toggleLabels));
 	}
 
 	private static void toggleSideLabels(Minecraft mc) {

@@ -1,8 +1,8 @@
 # Test plan: Logic Blocks
 
 Tests 1-14 have passed in a real client against a real Paper server on 26.2 and on 26.3 (client 0.2.0, Paper
-26.3-211), and CI runs the automated real-server self-test on every push. Tests 15-20 (side labels, client 0.3.0 with
-plugin 0.2.0) are new and have **not** been run in a real game yet. Rerun the plan after changes to the editor or the
+26.3-211), and CI runs the automated real-server self-test on every push. Tests 15-25 (side labels and their settings,
+client 0.3.0 with plugin 0.2.0) are new and have **not** been run in a real game yet. Rerun the plan after changes to the editor or the
 rules, and to judge how it feels.
 
 ## Setup (once, about 5 minutes)
@@ -39,6 +39,11 @@ rules, and to judge how it feels.
 | 18 | Look at an ordinary daylight detector | No letters. |
 | 19 | Press **N** | Above the hotbar: "side labels off"; the letters go. Press N again: back on. Leave and rejoin: your choice is kept. |
 | 20 | Options > Controls > Key Binds > **Logic Blocks** | "Side labels (N, E, S, W)", bound to N, can be rebound. |
+| 21 | **Label settings:** type `/logicblocks` | "Logic Blocks: side labels" opens: controls on the left, a preview on the right (the block from above with N at the top, and from the south). |
+| 22 | Drag **Size**, **Height**, **From centre**, **Background**; click **North** and **E, S, W** to cycle colours | The preview follows every change. Height moves the letters against the "1 block" line. |
+| 23 | **Done**, look at a Logic Block | The labels in the world match the preview. Rejoin: still your settings. |
+| 24 | Open a Logic Block's editor, click **Labels**, then **Done** | Back in the editor, with unsaved edits still there. |
+| 25 | **Reset** | Back to the defaults (100%, 0.62, 0.36, 25%, red and white). |
 
 ## Please report
 
@@ -55,4 +60,4 @@ recipe cost.
 4. **Sides are compass directions.** The mod now labels them (tests 15-20). Players without the mod still use F3.
 5. **Nothing yet for timers, counters, variables, or wireless links between blocks.** Those are the natural v2.
 6. **Side labels are on by default, toggled with N.** Only players with the mod see them, and only on the block
-   under the crosshair.
+   under the crosshair. Their look is each player's own setting (`/logicblocks`); there is no server-wide switch.

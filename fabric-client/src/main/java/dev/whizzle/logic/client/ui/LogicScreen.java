@@ -69,6 +69,8 @@ public final class LogicScreen extends Screen {
 		Button save = addRenderableWidget(Button.builder(Component.literal("Save"), b -> save()).pos(width - 110, 4).size(50, 18).build());
 		save.active = edit;
 		addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose()).pos(width - 56, 4).size(50, 18).build());
+		addRenderableWidget(Button.builder(Component.literal("Labels"), b -> dev.whizzle.logic.client.LogicClient.openSettings(this))
+			.pos(width - 164, 4).size(50, 18).build());
 
 		// Rule list
 		int y = 28;
@@ -268,7 +270,7 @@ public final class LogicScreen extends Screen {
 		int x0 = rightX();
 		g.text(font, "Logic Block", 6, 9, AQUA);
 		String out = "Output " + snapshot.output() + "   by " + open.owner() + "   " + open.x() + " " + open.y() + " " + open.z();
-		g.text(font, font.plainSubstrByWidth(out, width - 180), 76, 9, GRAY);
+		g.text(font, font.plainSubstrByWidth(out, width - 244), 76, 9, GRAY);
 		g.text(font, "Otherwise", 6, height - 19, WHITE);
 		if (draft.rules.isEmpty()) {
 			g.text(font, "No rules yet. \"+ Rule\" adds one: when something is true, set the output.", x0, 30, GRAY);
