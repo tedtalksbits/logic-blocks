@@ -2,7 +2,7 @@
 
 Tests 1-14 have passed in a real client against a real Paper server on 26.2 and on 26.3 (client 0.2.0, Paper
 26.3-211), and CI runs the automated real-server self-test on every push. Tests 15-25 (side labels and their settings,
-client 0.3.0 with plugin 0.2.0) are new and have **not** been run in a real game yet. Rerun the plan after changes to the editor or the
+client 0.3.0 with plugin 0.2.0) passed in a real 26.3 game. Rerun the plan after changes to the editor or the
 rules, and to judge how it feels.
 
 ## Setup (once, about 5 minutes)

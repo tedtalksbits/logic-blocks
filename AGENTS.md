@@ -25,13 +25,12 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - CI (GitHub Actions) green from its first run: plugin, client, real-Paper 26.3 self-test.
 - Side labels (plugin 0.2.0, client 0.3.0): the mod draws N, E, S, W over the Logic Block under the crosshair, asking
   the server via `query`/`is`; toggle key N. Each player sets their look in a settings screen with its own preview
-  (`/logicblocks` or the editor's Labels button). Unit-tested (19 plugin, 19 client) and the self-test passes, but
-  **not yet seen in a real 26.3 game** (`docs/TEST_PLAN.md` tests 15-25). See `docs/DESIGN.md`, "Side labels".
+  (`/logicblocks` or the editor's Labels button). Unit-tested (19 plugin, 19 client), the self-test passes, and the
+  owner ran `docs/TEST_PLAN.md` tests 15-25 in a real 26.3 game: all passed. See `docs/DESIGN.md`, "Side labels".
 
 ## Open items
 
-1. Side labels: the owner's real-game check (tests 15-25). Mod Menu integration for the settings screen once a
-   build can reach its Maven repo (not in the offline cache).
+1. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
 2. Release jars on tags (CI itself is done, `docs/CI.md`). No automatic deploy to the live server.
 3. v2 ideas, not started: timers, counters, variables, wireless links between Logic Blocks.
 
