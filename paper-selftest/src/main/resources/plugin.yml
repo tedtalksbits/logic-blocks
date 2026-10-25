@@ -1,0 +1,6 @@
+name: LogicSelfTest
+version: dev
+main: dev.whizzle.logic.selftest.SelfTestPlugin
+api-version: '26.2'
+depend: [LogicBlocks]
+description: Development-only checks of Logic Blocks on a real Paper server.

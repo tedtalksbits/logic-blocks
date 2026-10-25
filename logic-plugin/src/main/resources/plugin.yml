@@ -1,0 +1,16 @@
+name: LogicBlocks
+version: '${version}'
+main: dev.whizzle.logic.LogicBlocksPlugin
+api-version: '26.2'
+description: Programmable redstone - crafted Logic Blocks that output a signal from simple if-then rules.
+commands:
+  logic:
+    description: Logic Blocks commands
+    usage: /logic info
+permissions:
+  logicblocks.use:
+    description: Place Logic Blocks and program your own.
+    default: true
+  logicblocks.admin:
+    description: Edit anyone's Logic Blocks, /logic give, /logic status.
+    default: op
