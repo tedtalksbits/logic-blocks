@@ -55,14 +55,14 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 
 ## Building and testing
 
-- Plugin: `gradle build` at the repo root (Java 25, Gradle 9.1+). Jar: `logic-plugin/build/libs/logic-plugin-<v>.jar`.
+- Plugin: `gradlew build` at the repo root (Java 25, Gradle 9.8.0 via `gradlew`, same as the client). Jar: `logic-plugin/build/libs/logic-plugin-<v>.jar`.
 - Client: `cd fabric-client && gradlew build` (Loom 1.19.2 needs Gradle 9.8.0). Jar:
   `fabric-client/build/libs/logic-blocks-client-<v>.jar`.
 - Self-test: `ci/run-selftest.sh <paper.jar> <new-folder>` (Linux, Git Bash, CI) sets up a throwaway flat-world
   server, runs it with `-Dlogic.selftest.exit=true`, and fails unless `plugins/LogicSelfTest/report.txt` ends
   `SELFTEST PASSED`. Offline, add `PAPER_SEED_DIR=<existing server folder>`.
 - CI runs all three on every push to `main` (`docs/CI.md`).
-- Windows: `run\build-and-install.cmd` builds both. It currently borrows the JDK and Gradle from a sibling
+- Windows: `run\build-and-install.cmd` builds both. It currently borrows the JDK and Gradle cache from a sibling
   `blueprints-mc\.tools` folder and installs onto the owner's local test server there; if that folder is gone,
   point it at any JDK 25 and Gradle instead.
 

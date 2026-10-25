@@ -20,7 +20,7 @@ $env:GRADLE_USER_HOME = Join-Path $blueprints '.tools/gradle-home'
 
 Write-Host '1/2 Building the Logic Blocks plugin and running its tests...' -ForegroundColor Cyan
 Push-Location $project
-& (Join-Path $blueprints '.tools/gradle/gradle-9.1.0/bin/gradle.bat') build --console=plain
+& .\gradlew.bat build --console=plain
 $code = $LASTEXITCODE
 Pop-Location
 if ($code -ne 0) { Write-Host "PLUGIN BUILD OR TESTS FAILED (exit $code). Report: logic-plugin\build\reports\tests\test\index.html" -ForegroundColor Red; exit $code }

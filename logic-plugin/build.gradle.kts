@@ -23,8 +23,10 @@ java {
 tasks.test { useJUnitPlatform() }
 
 tasks.processResources {
-    inputs.property("version", project.version)
+    // Read the version now, not while the task runs (Gradle deprecates Task.project at execution time).
+    val version = project.version.toString()
+    inputs.property("version", version)
     filesMatching("plugin.yml") {
-        expand("version" to project.version)
+        expand("version" to version)
     }
 }
