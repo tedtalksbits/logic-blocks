@@ -1,5 +1,6 @@
 package dev.whizzle.logic.selftest;
 
+import dev.whizzle.logic.Demos;
 import dev.whizzle.logic.LogicBlocksPlugin;
 import dev.whizzle.logic.LogicManager;
 import dev.whizzle.logic.LogicItem;
@@ -208,7 +209,7 @@ public final class SelfTestPlugin extends JavaPlugin {
             return expect("wire", wire(k + 1, 0), 11);
         }));
 
-        // 10. Item sorter (docs/SORTER.md): stations of two Logic Blocks around a line of hoppers.
+        // 10. Item sorter (docs/SORTER.md, /logic demo sorter): stations of two Logic Blocks around a line of hoppers.
         sorter();
 
         // 11. Load: many busy blocks, timed.
@@ -246,38 +247,9 @@ public final class SelfTestPlugin extends JavaPlugin {
         return m;
     }
 
-    /**
-     * One station at x: line hopper S (y+3, facing east), LB1 north of S reading it, LB2 under LB1, hopper X under S
-     * pulling from it, a drain hopper D under X (never locked: it empties X even while X is locked), the chest under D.
-     *   LB1: S holds the target and nothing else, and LB2 isn't saying "full" (7) -> 15 (lock S); otherwise 0.
-     *   LB2: X is full -> 7 (tell LB1; X can't take more anyway); LB1 on -> 0 (unlock X); otherwise 15 (lock X).
-     */
-    void station(int x, int z, Material target) {
-        hopper(sb(x, 3, z), BlockFace.EAST);
-        hopper(sb(x, 2, z), BlockFace.DOWN);
-        hopper(sb(x, 1, z), BlockFace.DOWN);
-        sb(x, 0, z).setType(Material.CHEST);
-        String id = target.getKey().getKey();
-        int full = 5 * target.getMaxStackSize();
-        Block lb1 = sb(x, 3, z - 1), lb2 = sb(x, 2, z - 1);
-        lb1.setType(LogicItem.BLOCK);
-        manager.create(lb1, new Program(List.of(rule(Action.set(15),
-            Condition.items(Side.SOUTH, id, Op.GE, 1), Condition.items(Side.SOUTH, "*", Op.LE, 1), Condition.signal(Side.DOWN, Op.NE, 7))),
-            Action.set(0)), OWNER, "SelfTest");
-        lb2.setType(LogicItem.BLOCK);
-        manager.create(lb2, new Program(List.of(
-            rule(Action.set(7), Condition.items(Side.SOUTH, id, Op.GE, full)),
-            rule(Action.set(0), Condition.signal(Side.UP, Op.GT, 0))), Action.set(15)), OWNER, "SelfTest");
-    }
-
-    /** Feeder chest over a hopper pushing east into the first station; overflow chest after the last. */
+    /** The sorter exactly as /logic demo builds it (Demos.sorter); returns its feeder chest. */
     Block line(int x0, int z, List<Material> targets) {
-        hopper(sb(x0 - 1, 3, z), BlockFace.EAST);
-        sb(x0 - 1, 4, z).setType(Material.CHEST);
-        for (int i = 0; i < targets.size(); i++) station(x0 + i, z, targets.get(i));
-        Block overflow = sb(x0 + targets.size(), 3, z);
-        overflow.setType(Material.CHEST);
-        return sb(x0 - 1, 4, z);
+        return Demos.sorter(manager, w, x0, SY, z, targets, OWNER, "SelfTest").feeder();
     }
 
     void sorter() {

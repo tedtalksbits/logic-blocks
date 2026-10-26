@@ -24,7 +24,8 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - Client: 6 unit tests pass. Exercised end to end in real **26.2** and **26.3** games; on 26.3 (client 0.2.0, Paper
   26.3-211) the owner ran every `docs/TEST_PLAN.md` test and all passed.
 - CI (GitHub Actions) green from its first run: plugin, client, real-Paper 26.3 self-test.
-- Item sorter build (`docs/SORTER.md`): two Logic Blocks per station, pure redstone. Proven by the self-test's
+- Item sorter build (`docs/SORTER.md`, picture `docs/images/sorter.png` drawn by a script, not a game screenshot):
+  `/logic demo sorter [items]` builds it (`Demos`, shared with the self-test). Two Logic Blocks per station. Proven by the self-test's
   "sorter" steps on real Paper 26.3 (60 and 190 mixed items, no wrong items, 2.4 items/s, full chest passes items on).
   Limit: feed through one hopper (a double-speed feed let one wrong item through in 68).
 - Side labels (plugin 0.2.0, client 0.3.0): the mod draws N, E, S, W over the Logic Block under the crosshair, asking

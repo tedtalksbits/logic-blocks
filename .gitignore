@@ -6,3 +6,4 @@ build/
 run/*.jar
 .tools/
 .paper/
+run/client-mods/

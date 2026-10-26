@@ -12,5 +12,5 @@ permissions:
     description: Place Logic Blocks and program your own.
     default: true
   logicblocks.admin:
-    description: Edit anyone's Logic Blocks, /logic give, /logic status.
+    description: Edit anyone's Logic Blocks, /logic give, /logic status, /logic demo.
     default: op

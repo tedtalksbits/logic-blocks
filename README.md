@@ -47,7 +47,7 @@ same editor built for 26.2. Side labels need client 0.3.0 and plugin 0.2.0; olde
 6. **Save**. The block's output changes within a tick or two.
 
 **Things to build:** an item sorter that also sorts tools and never jams on a full chest
-([docs/SORTER.md](docs/SORTER.md)).
+([docs/SORTER.md](docs/SORTER.md); operators can have it built for them with `/logic demo sorter`).
 
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
 
@@ -105,6 +105,7 @@ otherwise **Keep**, is a door latch in one block.
 | `/logic info` | everyone | Shows the rules of the Logic Block you're looking at |
 | `/logic give [player] [amount]` | operators | Gives Logic Blocks |
 | `/logic status` | operators | How many are loaded and how many editors are open |
+| `/logic demo sorter [item ...]` | operators | Builds a working, stocked item sorter next to you ([docs/SORTER.md](docs/SORTER.md)) |
 
 `logicblocks.use` (everyone): place Logic Blocks and edit your own. `logicblocks.admin` (operators): edit anyone's,
 `give`, `status`.

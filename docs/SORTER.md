@@ -8,6 +8,22 @@ full**: that station's items carry on to the overflow.
 Tested on a real Paper 26.3 server by the self-test (`paper-selftest`, "sorter" steps): 60 mixed items and 190
 mixed items sorted with no wrong items and nothing stuck, at 2.4 items per second (a hopper's top speed is 2.5).
 
+## Try it first
+
+As an operator, stand somewhere open and run:
+
+```
+/logic demo sorter                                  (diamond, emerald, diamond_sword)
+/logic demo sorter iron_ingot gold_ingot redstone   (any 1 to 8 items)
+```
+
+It builds a working sorter next to you (starting 1 block east and 2 south of your feet; it needs a clear space
+the length of the line, 2 wide and 5 high), with the Logic Blocks programmed and owned by you and the feeder chest
+stocked with a mix. Watch it sort, then open the Logic Blocks to see their rules, or break it down to see the
+layers. It's the same build the self-test checks on a real server.
+
+![The sorter: one station cut through, and the line from above](images/sorter.png)
+
 ## One station
 
 The line runs east here, with the Logic Blocks on its north side. Looking along the line:

@@ -44,7 +44,8 @@ rules, and to judge how it feels.
 | 23 | **Done**, look at a Logic Block | The labels in the world match the preview. Rejoin: still your settings. |
 | 24 | Open a Logic Block's editor, click **Labels**, then **Done** | Back in the editor, with unsaved edits still there. |
 | 25 | **Reset** | Back to the defaults (100%, 0.62, 0.36, 25%, red and white). |
-| 26 | **Sorter:** build two stations from `docs/SORTER.md` (diamond, then diamond_sword), a feeder chest over one hopper, an overflow chest | Fill the feeder with a mix: diamonds and swords end in their chests, everything else in the overflow. |
+| 26 | **Sorter:** in an open spot, `/logic demo sorter` | A sorter appears south-east of you (glass on top, Logic Blocks on its north side). Within about 30 seconds the stocked mix is sorted: diamonds, emeralds and diamond swords in their chests, the rest in the overflow chest at the east end. |
+| 26b | Stand next to a wall and run it again | "Not enough room: ..." names the block in the way; nothing is built. |
 | 27 | Fill the diamond chest (and its two hoppers) completely, feed more diamonds | They go to the overflow; the line keeps moving. Empty the chest: diamonds are sorted again. |
 
 ## Please report
