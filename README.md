@@ -118,8 +118,11 @@ Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/log
 client compiles the plugin's rule model (`dev.whizzle.logic.model`) from `logic-plugin/src`, so both sides share
 one implementation of the rules, their encoding and their evaluation.
 
-On Windows next to the Blueprints project, `run\build-and-install.cmd` builds both, installs the plugin on the
-Blueprints test server, and copies the client jars to `run\client-mods\`.
+**Development loop:** `run\build-and-install.cmd` (Windows) or `run/build-and-install.sh` stops your local test
+server, builds and tests both parts, installs the plugin on the server and the client mod in Minecraft's mods folder,
+and offers to start the server again. Point it at your setup with `LOGIC_SERVER_DIR` (the Paper server folder) and
+`LOGIC_MODS_DIR` (default: the standard `.minecraft/mods`); `--help` lists the options. With `--enable-rcon` (once,
+local test servers only) it stops the server through RCON instead of asking you to type `stop`.
 
 ## Project layout
 

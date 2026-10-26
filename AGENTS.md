@@ -77,9 +77,12 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   `SELFTEST PASSED`. Offline, add `PAPER_SEED_DIR=<existing server folder>`.
 - CI runs all three on every push to `main` (`docs/CI.md`). Releases: tag `v<plugin version>`; the release
   workflow reruns CI and publishes both jars (`docs/CI.md`, "Releases"). No automatic deploy to the live server.
-- Windows: `run\build-and-install.cmd` builds both. It currently borrows the JDK and Gradle cache from a sibling
-  `blueprints-mc\.tools` folder and installs onto the owner's local test server there; if that folder is gone,
-  point it at any JDK 25 and Gradle instead.
+- Dev loop: `run\build-and-install.cmd` (Windows) or `run/build-and-install.sh` runs `run/DevInstall.java`: stops
+  the local test server (RCON if enabled, else waits for `stop`), builds and tests both, installs the plugin as
+  `plugins/LogicBlocks.jar` and the client in Minecraft's mods folder, offers to start the server. Defaults fit the
+  owner (blueprints-mc's test server, JDK and Gradle cache next to this project); `LOGIC_SERVER_DIR`,
+  `LOGIC_MODS_DIR`, `LOGIC_GRADLE_ARGS`, `JAVA_HOME` override. Java rather than PowerShell so it runs (and was
+  tested, against a real Paper server and RCON) anywhere.
 
 ## Cloud workspace pitfalls (if you work in a remote Linux container)
 

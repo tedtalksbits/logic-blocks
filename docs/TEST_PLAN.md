@@ -7,13 +7,13 @@ rules, and to judge how it feels.
 
 ## Setup (once, about 5 minutes)
 
-1. Stop the Blueprints test server (type `stop` in its console).
-2. Double-click `run\build-and-install.cmd` in this project. It builds and tests the plugin, installs it on the
-   Blueprints test server (`..\blueprints-mc\run\local-paper`), builds the client mod, and copies it to
-   `run\client-mods\`.
-3. Copy `run\client-mods\logic-blocks-client-0.3.0.jar` into (and remove any older `logic-blocks-client` jar from) `%APPDATA%\.minecraft\mods\` next to the Blueprints
-   mod and Fabric API you already have.
-4. Start the server, launch **fabric-loader-26.3**, join. In creative or survival, `/logic give` gives you a few.
+1. Close Minecraft (Windows won't replace a mod jar the game has open).
+2. Double-click `run\build-and-install.cmd`. It stops the test server (`..\blueprints-mc\run\local-paper`), builds
+   and tests both parts, installs the plugin on the server and the client mod in `%APPDATA%\.minecraft\mods\`
+   (replacing older Logic Blocks client jars, leaving Fabric API and the Blueprints mod alone), then offers to start
+   the server. Without RCON it asks you to type `stop` in the server window and carries on by itself; run
+   `run\build-and-install.cmd --enable-rcon` once and it stops the server for you from then on.
+3. Launch **fabric-loader-26.3** and join. In creative or survival, `/logic give` gives you a few.
 
 ## Tests
 
