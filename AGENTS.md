@@ -54,7 +54,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | v1 inputs: block on a side, signal on a side, items in an adjacent container, players nearby | Owner: "fine for v1" |
 | Sides shown by labels the mod draws, not a texture | Owner wants no visual change to any vanilla block; a texture would hit every daylight detector |
 | Labels on by default, toggle key N, N/E/S/W only | Owner's call |
-| Logic Blocks stay pure redstone (no item-moving actions) | Owner's call |
+| Redstone first. Actions beyond redstone (e.g. moving items) are **open**, if limited and not game-breaking; not decided yet | Owner: the goal is redstone that's intuitive and programming-friendly, not purity; wants guidance on scope |
 | Release tag = plugin version; the client keeps its own version; both jars in each release | Same as Blueprints (owner's call) |
 | Label look is a per-player client setting with an in-screen preview; no server-wide off switch | Owner: visual preferences belong to the player; players can't look around while in a menu |
 
