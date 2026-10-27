@@ -10,10 +10,13 @@ import java.util.Objects;
  *   <li>SIGNAL: the redstone signal coming in on {@code side} (or ANY: the strongest), compared with {@code number}.</li>
  *   <li>ITEMS: how many {@code id} items (or "*" for any) the container on {@code side} holds, compared with {@code number}.</li>
  *   <li>PLAYERS: how many players are within {@code number2} blocks, compared with {@code number}.</li>
+ *   <li>CHANGE: the signal on {@code side} (or ANY: the strongest) has just turned on ({@code number} 1: it was 0 at
+ *       the previous check and isn't now) or off ({@code number} 0). True for one check only, so a held button
+ *       counts once.</li>
  * </ul>
  */
 public record Condition(Kind kind, Side side, Op op, String id, int number, int number2) {
-    public enum Kind { BLOCK, SIGNAL, ITEMS, PLAYERS }
+    public enum Kind { BLOCK, SIGNAL, ITEMS, PLAYERS, CHANGE }   // append only: stored by ordinal
 
     public enum Op {
         IS("is"), IS_NOT("is not"), EQ("="), NE("!="), LT("<"), LE("<="), GT(">"), GE(">=");
@@ -44,6 +47,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case SIGNAL -> { id = ""; number2 = 0; }
             case ITEMS -> number2 = 0;
             case PLAYERS -> { side = Side.ANY; id = ""; }
+            case CHANGE -> { op = Op.EQ; id = ""; number = number == 0 ? 0 : 1; number2 = 0; }
         }
     }
 
@@ -51,6 +55,9 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
     public static Condition signal(Side side, Op op, int strength) { return new Condition(Kind.SIGNAL, side, op, "", strength, 0); }
     public static Condition items(Side side, String id, Op op, int count) { return new Condition(Kind.ITEMS, side, op, id, count, 0); }
     public static Condition players(int radius, Op op, int count) { return new Condition(Kind.PLAYERS, Side.ANY, op, "", count, radius); }
+    /** The signal on {@code side} turns on ({@code on}) or off. */
+    public static Condition change(Side side, boolean on) { return new Condition(Kind.CHANGE, side, Op.EQ, "", on ? 1 : 0, 0); }
+    public boolean turnsOn() { return kind == Kind.CHANGE && number == 1; }
 
     /** Null when valid, otherwise what's wrong, in words a player understands. */
     public String problem() {
@@ -75,6 +82,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
                 if (number2 < 1 || number2 > MAX_RADIUS) return "Distance is 1 to " + MAX_RADIUS + " blocks";
                 if (number < 0 || number > 100) return "Player count is 0 to 100";
             }
+            case CHANGE -> { }
         }
         return null;
     }
@@ -88,6 +96,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case SIGNAL -> "signal " + (side == Side.ANY ? "any side" : side.label().toLowerCase(Locale.ROOT)) + " " + op.symbol + " " + number;
             case ITEMS -> (id.equals("*") ? "items" : id) + " " + side.label().toLowerCase(Locale.ROOT) + " " + op.symbol + " " + number;
             case PLAYERS -> "players within " + number2 + " " + op.symbol + " " + number;
+            case CHANGE -> "signal " + (side == Side.ANY ? "any side" : side.label().toLowerCase(Locale.ROOT)) + (number == 1 ? " turns on" : " turns off");
         };
     }
 

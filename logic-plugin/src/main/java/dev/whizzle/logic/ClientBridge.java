@@ -24,7 +24,7 @@ import java.util.*;
  * client streams nothing but edits back, and every save is validated here.
  */
 public final class ClientBridge implements PluginMessageListener, Listener {
-    public static final int PROTOCOL = 1;
+    public static final int PROTOCOL = 2;   // 2: program format 2 (v2 rules)
     public static final String HELLO = "logicblocks:hello", WELCOME = "logicblocks:welcome", OPEN = "logicblocks:open",
         SAVE = "logicblocks:save", RESULT = "logicblocks:result", LIVE = "logicblocks:live", CLOSE = "logicblocks:close",
         QUERY = "logicblocks:query", IS = "logicblocks:is";

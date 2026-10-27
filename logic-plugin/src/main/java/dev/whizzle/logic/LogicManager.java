@@ -1,5 +1,6 @@
 package dev.whizzle.logic;
 
+import dev.whizzle.logic.model.Action;
 import dev.whizzle.logic.model.Engine;
 import dev.whizzle.logic.model.Program;
 import net.kyori.adventure.text.Component;
@@ -163,9 +164,13 @@ public final class LogicManager implements Listener {
         n.lastEval = tick;
         int beforeMatched = n.state.matched, beforeOutput = n.state.output;
         boolean beforeToggle = n.state.toggled;
-        Engine.Evaluation e = Engine.evaluate(n.program, new WorldInputs(block));
+        Engine.Evaluation e = Engine.evaluate(n.program, new WorldInputs(block), n.state.signals);
+        Engine.remember(n.state.signals, e);
         n.last = e;
         Engine.step(n.program, n.state, e.matched(), tick);
+        if (tick >= n.state.nextMove)
+            for (Action a : Engine.worldActions(n.program, e))
+                if (a.kind() == Action.Kind.MOVE && Mover.move(block, a)) { n.state.nextMove = tick + Mover.COOLDOWN; break; }
         if (n.state.matched != beforeMatched || n.state.output != beforeOutput || n.state.toggled != beforeToggle) save(n);
         evaluated.accept(n);
     }

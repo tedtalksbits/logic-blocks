@@ -2,7 +2,8 @@
 
 Tests 1-14 have passed in a real client against a real Paper server on 26.2 and on 26.3 (client 0.2.0, Paper
 26.3-211), and CI runs the automated real-server self-test on every push. Tests 15-25 (side labels and their settings,
-client 0.3.0 with plugin 0.2.0) passed in a real 26.3 game. Rerun the plan after changes to the editor or the
+client 0.3.0 with plugin 0.2.0) passed in a real 26.3 game. Tests 26-36 (rules v2, plugin 0.3.0 with client 0.4.0) are
+new: the plugin side passed on a real server (self-test), the editor hasn't been seen in a real game yet. Rerun the plan after changes to the editor or the
 rules, and to judge how it feels.
 
 ## Setup (once, about 5 minutes)
@@ -44,9 +45,23 @@ rules, and to judge how it feels.
 | 23 | **Done**, look at a Logic Block | The labels in the world match the preview. Rejoin: still your settings. |
 | 24 | Open a Logic Block's editor, click **Labels**, then **Done** | Back in the editor, with unsaved edits still there. |
 | 25 | **Reset** | Back to the defaults (100%, 0.62, 0.36, 25%, red and white). |
-| 26 | **Sorter:** in an open spot, `/logic demo sorter` | A sorter appears south-east of you (glass on top, Logic Blocks on its north side). Within about 30 seconds the stocked mix is sorted: diamonds, emeralds and diamond swords in their chests, the rest in the overflow chest at the east end. |
+| 26 | **Sorter:** in an open spot, `/logic demo sorter` | A line of hoppers with a Logic Block and a chest under each appears south-east of you. Within about 30 seconds the stocked mix is sorted: diamonds, emeralds and diamond swords in their chests, the rest in the overflow chest at the east end. |
 | 26b | Stand next to a wall and run it again | "Not enough room: ..." names the block in the way; nothing is built. |
-| 27 | Fill the diamond chest (and its two hoppers) completely, feed more diamonds | They go to the overflow; the line keeps moving. Empty the chest: diamonds are sorted again. |
+| 27 | Fill the diamond chest completely, feed more diamonds | They go to the overflow; the line keeps moving. Empty the chest: diamonds are sorted again. |
+| 28 | Right-click one of the sorter's Logic Blocks | The editor opens on the **Also** tab: "1. always: move diamond". The move row reads "now: up: hopper, ... -> down: chest" in green. |
+| 29 | `/logic demo redstone-sorter` somewhere else | The two-Logic-Block version (glass on top, Logic Blocks on its north side) sorts the same mix. |
+
+## Tests: rules v2
+
+| # | Do this | Expect |
+|---|---|---|
+| 30 | **Tabs:** open any Logic Block | Two tabs, **Output (n)** and **Also (n)**, the open one in white. Output shows "Otherwise" at the bottom; Also doesn't. |
+| 31 | **Turns on:** button on a block, repeater into the west side. Output rule: **Change** West **turns on** -> **Toggle** 15, otherwise **Keep** | Each press flips a lamp on the east side. Holding the button doesn't flip it again. |
+| 32 | **Move in an output rule:** in rule 31, **+ Move items**: `*` from **Up** to **Down**, chests above and below the Logic Block, a few items in the top one | Each press also moves one item down. The list shows "west on -> toggle 15 + move". |
+| 33 | **Furnace fuel:** a Logic Block with a chest of coal on top and a furnace to its east. Also rule: Move `coal` from **Up** to **East** | Coal fills the furnace's **fuel** slot (it goes in through the furnace's side, as from a hopper). |
+| 34 | Same block, Move `iron_ore` from **Up** to **East** | Nothing moves: a furnace's side only takes fuel. Move the Logic Block on top of the furnace (Move ... to **Down**) and the ore goes into the smelting slot. |
+| 35 | **Old blocks:** a Logic Block placed with plugin 0.2.0 (before updating) | After updating it still runs its rules, and the editor shows them unchanged. |
+| 36 | An old client (0.3.0) on the new server | Right-clicking says the server needs a different version of the mod, instead of opening the editor. |
 
 ## Please report
 
@@ -61,6 +76,7 @@ recipe cost.
    editor warns. Fixing this in the plugin would mean guessing which part of the dust's power is external.
 3. **Only the owner (and operators) can edit.** Set `editing: anyone` in `config.yml` to open it up.
 4. **Sides are compass directions.** The mod now labels them (tests 15-20). Players without the mod still use F3.
-5. **Nothing yet for timers, counters, variables, or wireless links between blocks.** Those are the natural v2.
+5. **Moving items is hopper speed:** one item per 8 ticks per Logic Block, only between touching containers.
+   Timers, counters, copy and paste, and presets come next; variables and wireless links later.
 6. **Side labels are on by default, toggled with N.** Only players with the mod see them, and only on the block
    under the crosshair. Their look is each player's own setting (`/logicblocks`); there is no server-wide switch.

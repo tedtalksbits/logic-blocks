@@ -212,7 +212,13 @@ public final class SelfTestPlugin extends JavaPlugin {
         // 10. Item sorter (docs/SORTER.md, /logic demo sorter): stations of two Logic Blocks around a line of hoppers.
         sorter();
 
-        // 11. Load: many busy blocks, timed.
+        // 11. Moving items (v2): speed, filtering, the v2 sorter, furnaces, protection plugins.
+        moves();
+
+        // 12. Turns on: a held input counts once.
+        turnsOn();
+
+        // 13. Load: many busy blocks, timed.
         steps.add(new Step("load: 400 blocks x 8 rules x 3 conditions", this::buildLoad, 4, this::measureLoad));
 
         run(0);
@@ -384,6 +390,208 @@ public final class SelfTestPlugin extends JavaPlugin {
         int wait = parts.stream().mapToInt(Step::ticks).max().orElse(1);
         steps.add(new Step("sorter: build " + parts.size() + " scenarios", () -> parts.forEach(p -> p.action().run()), wait, () -> null));
         for (Step p : parts) steps.add(new Step(p.name(), () -> { }, 1, p.check()));
+    }
+
+    // ---- moving items (v2) ----
+
+    final Set<Block> protectedChests = new HashSet<>();
+
+    LogicNode lb(Block b, Program p) {
+        b.setType(LogicItem.BLOCK);
+        return manager.create(b, p, OWNER, "SelfTest");
+    }
+
+    static Program also(Action... moves) {
+        List<Program.Rule> rules = new ArrayList<>();
+        for (Action a : moves) rules.add(new Program.Rule(List.of(), a));
+        return Program.EMPTY.withAlso(rules);
+    }
+
+    void moves() {
+        int x0 = 500;
+        for (int cx = (x0 - 16) >> 4; cx <= (x0 + 80) >> 4; cx++) for (int cz = -1; cz <= 2; cz++) w.setChunkForceLoaded(cx, cz, true);
+        for (int x = x0 - 8; x <= x0 + 80; x++) for (int z = -6; z <= 30; z++) {
+            w.getBlockAt(x, SY - 1, z).setType(Material.STONE);
+            for (int y = SY; y < SY + 6; y++) w.getBlockAt(x, y, z).setType(Material.AIR);
+        }
+        getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void onMove(org.bukkit.event.inventory.InventoryMoveItemEvent e) {
+                Location l = e.getDestination().getLocation();
+                if (l != null && protectedChests.contains(l.getBlock())) e.setCancelled(true);
+            }
+        }, this);
+        List<Step> parts = new ArrayList<>();
+        List<Material> targets = List.of(Material.DIAMOND, Material.EMERALD, Material.DIAMOND_SWORD);
+
+        // M1: one Logic Block between two chests moves only diamonds, at hopper speed (one per 8 ticks).
+        int m1 = x0;
+        int[] at400 = {-1, -1};
+        parts.add(new Step("move: only the named item, at hopper speed", () -> {
+            // Scenarios run side by side, so read this one's count at its own 400 ticks.
+            getServer().getScheduler().runTaskLater(this, () -> { at400[0] = count(sb(m1, 0, 0), Material.DIAMOND); at400[1] = count(sb(m1, 0, 0), Material.STONE); }, 400);
+            sb(m1, 0, 0).setType(Material.CHEST);
+            lb(sb(m1, 1, 0), also(Action.move("diamond", Side.UP, Side.DOWN)));
+            sb(m1, 2, 0).setType(Material.CHEST);
+            inv(sb(m1, 2, 0)).setItem(0, new ItemStack(Material.STONE, 10));
+            inv(sb(m1, 2, 0)).setItem(1, new ItemStack(Material.DIAMOND, 64));
+        }, 400, () -> {
+            int moved = at400[0], stone = at400[1];
+            report.add(String.format(Locale.ROOT, "INFO move: %d diamonds in 400 ticks (%.2f items/s; a hopper does 2.5)", moved, moved / 20.0));
+            if (stone != 0) return "moved stone";
+            if (count(sb(m1, 0, 0), Material.DIAMOND) != 64 || count(sb(m1, 2, 0), Material.DIAMOND) != 0) return "not all 64 diamonds arrived exactly once";
+            return moved >= 45 && moved <= 51 ? null : "moved " + moved + " in 400 ticks, expected about 50 (one per 8 ticks)";
+        }));
+
+        // M2: the v2 sorter (one Logic Block per station) with the 60-item mix through one hopper.
+        int m2 = x0 + 6, z2 = 0;
+        Map<Material, Integer> fed2 = new TreeMap<>();
+        long[] start2 = {0}, done2 = {-1};
+        parts.add(new Step("move sorter: 3 stations, a mix", () -> {
+            Block feeder = Demos.moveSorter(manager, w, m2, SY, z2, targets, OWNER, "SelfTest").feeder();
+            for (int slot = 0; slot < 27; slot++) {
+                Material m = MIX.get(slot % MIX.size());
+                int n = m.getMaxStackSize() == 1 ? 1 : 1 + slot % 4;
+                inv(feeder).setItem(slot, new ItemStack(m, n));
+                fed2.merge(m, n, Integer::sum);
+            }
+            start2[0] = w.getFullTime();
+            int total = fed2.values().stream().mapToInt(Integer::intValue).sum();
+            for (int t = 20; t <= 1000; t += 10) getServer().getScheduler().runTaskLater(this, () -> {
+                if (done2[0] >= 0) return;
+                int delivered = count(sb(m2 + targets.size(), 2, z2), null);
+                for (int i = 0; i < targets.size(); i++) delivered += count(sb(m2 + i, 0, z2), null);
+                if (delivered == total) done2[0] = w.getFullTime() - start2[0];
+            }, t);
+        }, 1000, () -> {
+            List<String> problems = sorted(m2, z2, targets, fed2, true);
+            int total = fed2.values().stream().mapToInt(Integer::intValue).sum();
+            report.add("INFO move sorter: " + (done2[0] >= 0
+                ? String.format(Locale.ROOT, "all %d items placed in %d ticks (%.1f items/s)", total, done2[0], total * 20.0 / done2[0]) : "not all items placed"));
+            return problems.isEmpty() ? null : String.join("; ", problems);
+        }));
+
+        // M3: double-speed feed (a second chest over the first line hopper). It can't pull a wrong item; count misses.
+        int m3 = x0 + 14, z3 = 0;
+        Map<Material, Integer> fed3 = new TreeMap<>();
+        parts.add(new Step("move sorter: double-speed feed, never a wrong item", () -> {
+            Block feeder = Demos.moveSorter(manager, w, m3, SY, z3, targets, OWNER, "SelfTest").feeder();
+            Block second = sb(m3, 3, z3);
+            second.setType(Material.CHEST);
+            for (Block f : List.of(feeder, second)) for (int slot = 0; slot < 27; slot++) {
+                Material m = MIX.get((slot + (f == second ? 3 : 0)) % MIX.size());
+                int n = m.getMaxStackSize() == 1 ? 1 : 1 + slot % 4;
+                inv(f).setItem(slot, new ItemStack(m, n));
+                fed3.merge(m, n, Integer::sum);
+            }
+        }, 1500, () -> {
+            List<String> problems = sorted(m3, z3, targets, fed3, false);
+            int sortedN = 0, missed = 0;
+            Map<Material, Integer> over = contents(sb(m3 + targets.size(), 2, z3));
+            for (int i = 0; i < targets.size(); i++) { sortedN += count(sb(m3 + i, 0, z3), targets.get(i)); missed += over.getOrDefault(targets.get(i), 0); }
+            report.add(String.format(Locale.ROOT, "INFO move sorter double-speed feed: %d sorted, %d went past (%.0f%%), wrong items: %s",
+                sortedN, missed, 100.0 * missed / Math.max(1, sortedN + missed), problems.isEmpty() ? "none" : String.join("; ", problems)));
+            return problems.isEmpty() ? null : String.join("; ", problems);
+        }));
+
+        // M4: a full chest: the move can't happen, so the item rides on to the overflow; nothing jams.
+        int m4 = x0 + 22, z4 = 0;
+        parts.add(new Step("move sorter: full chest passes items on, no jam", () -> {
+            Block feeder = Demos.moveSorter(manager, w, m4, SY, z4, List.of(Material.DIAMOND), OWNER, "SelfTest").feeder();
+            for (int slot = 0; slot < 27; slot++) inv(sb(m4, 0, z4)).setItem(slot, new ItemStack(Material.DIAMOND, 64));
+            for (int slot = 0; slot < 10; slot++) inv(feeder).setItem(slot, new ItemStack(slot % 2 == 0 ? Material.DIAMOND : Material.STONE, 2));
+        }, 400, () -> {
+            Map<Material, Integer> over = contents(sb(m4 + 1, 2, z4));
+            int stuck = count(sb(m4, 2, z4), null) + count(sb(m4 - 1, 2, z4), null) + count(sb(m4 - 1, 3, z4), null);
+            return over.getOrDefault(Material.DIAMOND, 0) == 10 && over.getOrDefault(Material.STONE, 0) == 10 && stuck == 0 ? null
+                : "overflow got " + over + ", still in the line " + stuck;
+        }));
+
+        // M5: furnaces, through the faces a hopper would use.
+        int m5 = x0 + 30;
+        parts.add(new Step("move: furnace side takes fuel only, top takes smelting input, bottom gives results", () -> {
+            // A: Logic Block west of a furnace, chest above it: coal goes into the fuel slot, iron ore is refused.
+            sb(m5, 2, 0).setType(Material.CHEST);
+            inv(sb(m5, 2, 0)).setItem(0, new ItemStack(Material.IRON_ORE, 3));
+            inv(sb(m5, 2, 0)).setItem(1, new ItemStack(Material.COAL, 3));
+            lb(sb(m5, 1, 0), also(Action.move("iron_ore", Side.UP, Side.EAST), Action.move("coal", Side.UP, Side.EAST)));
+            sb(m5 + 1, 1, 0).setType(Material.FURNACE);
+            // B: Logic Block on top of a furnace, chest north of it: iron ore goes into the smelting slot.
+            sb(m5, 1, 4).setType(Material.FURNACE);
+            lb(sb(m5, 2, 4), also(Action.move("iron_ore", Side.NORTH, Side.DOWN)));
+            sb(m5, 2, 3).setType(Material.CHEST);
+            inv(sb(m5, 2, 3)).setItem(0, new ItemStack(Material.IRON_ORE, 2));
+            // C: Logic Block under a furnace, chest under it: takes the result, leaves the fuel.
+            sb(m5, 0, 8).setType(Material.CHEST);
+            lb(sb(m5, 1, 8), also(Action.move("*", Side.UP, Side.DOWN)));
+            sb(m5, 2, 8).setType(Material.FURNACE);
+            org.bukkit.inventory.FurnaceInventory f = (org.bukkit.inventory.FurnaceInventory) inv(sb(m5, 2, 8));
+            f.setResult(new ItemStack(Material.IRON_INGOT, 3));
+            f.setFuel(new ItemStack(Material.COAL, 2));
+        }, 100, () -> {
+            org.bukkit.inventory.FurnaceInventory a = (org.bukkit.inventory.FurnaceInventory) inv(sb(m5 + 1, 1, 0));
+            org.bukkit.inventory.FurnaceInventory b = (org.bukkit.inventory.FurnaceInventory) inv(sb(m5, 1, 4));
+            org.bukkit.inventory.FurnaceInventory c = (org.bukkit.inventory.FurnaceInventory) inv(sb(m5, 2, 8));
+            List<String> problems = new ArrayList<>();
+            if (a.getFuel() == null || a.getFuel().getType() != Material.COAL || a.getFuel().getAmount() != 3) problems.add("side: fuel slot " + a.getFuel());
+            if (a.getSmelting() != null && !a.getSmelting().getType().isAir()) problems.add("side: smelting slot got " + a.getSmelting());
+            if (count(sb(m5, 2, 0), Material.IRON_ORE) != 3) problems.add("side: iron ore left the chest");
+            if (b.getSmelting() == null || b.getSmelting().getType() != Material.IRON_ORE || b.getSmelting().getAmount() != 2) problems.add("top: smelting slot " + b.getSmelting());
+            if (count(sb(m5, 0, 8), Material.IRON_INGOT) != 3) problems.add("bottom: got " + contents(sb(m5, 0, 8)));
+            if (c.getFuel() == null || c.getFuel().getAmount() != 2) problems.add("bottom: took fuel " + c.getFuel());
+            return problems.isEmpty() ? null : String.join("; ", problems);
+        }));
+
+        // M6: a protection plugin cancelling the hopper move event stops the Logic Block too.
+        int m6 = x0 + 36;
+        parts.add(new Step("move: a protection plugin can stop it (InventoryMoveItemEvent)", () -> {
+            sb(m6, 0, 0).setType(Material.CHEST);
+            protectedChests.add(sb(m6, 0, 0));
+            lb(sb(m6, 1, 0), also(Action.move("*", Side.UP, Side.DOWN)));
+            sb(m6, 2, 0).setType(Material.CHEST);
+            inv(sb(m6, 2, 0)).setItem(0, new ItemStack(Material.DIAMOND, 5));
+        }, 60, () -> count(sb(m6, 0, 0), null) == 0 && count(sb(m6, 2, 0), Material.DIAMOND) == 5 ? null : "moved into a protected chest"));
+
+        int wait = parts.stream().mapToInt(Step::ticks).max().orElse(1);
+        steps.add(new Step("moves: build " + parts.size() + " scenarios", () -> parts.forEach(p -> p.action().run()), wait, () -> null));
+        for (Step p : parts) steps.add(new Step(p.name(), () -> { }, 1, p.check()));
+    }
+
+    /** Problems with a sorter line's chests: wrong items; with {@code all}, also targets missing from their chest. */
+    List<String> sorted(int x0, int z, List<Material> targets, Map<Material, Integer> fed, boolean all) {
+        List<String> problems = new ArrayList<>();
+        for (int i = 0; i < targets.size(); i++) {
+            Material t = targets.get(i);
+            Map<Material, Integer> got = contents(sb(x0 + i, 0, z));
+            if (!got.keySet().stream().allMatch(t::equals)) problems.add(t + " chest has " + got);
+            if (all && got.getOrDefault(t, 0) != fed.getOrDefault(t, 0)) problems.add(t + ": " + got.getOrDefault(t, 0) + " of " + fed.get(t));
+        }
+        if (all) {
+            Map<Material, Integer> over = contents(sb(x0 + targets.size(), 2, z));
+            for (Material t : targets) if (over.containsKey(t)) problems.add("overflow has " + over.get(t) + " " + t);
+            for (int i = -1; i < targets.size(); i++) if (count(sb(x0 + i, 2, z), null) > 0) problems.add("stuck in line hopper " + i);
+        }
+        return problems;
+    }
+
+    // ---- turns on ----
+
+    void turnsOn() {
+        int t = 620;
+        for (int cx = (t - 8) >> 4; cx <= (t + 8) >> 4; cx++) w.setChunkForceLoaded(cx, 0, true);
+        steps.add(new Step("turns on: placed", () -> {
+            for (int x = t - 4; x <= t + 4; x++) { w.getBlockAt(x, Y - 1, 0).setType(Material.STONE); w.getBlockAt(x, Y, 0).setType(Material.AIR); }
+            node(t, 0, new Program(List.of(rule(Action.toggle(15), Condition.change(Side.WEST, true))), Action.keep()));
+            repeaterInto(t - 1, 0, BlockFace.WEST);
+            at(t + 1, 0).setType(Material.REDSTONE_WIRE);
+        }, 6, () -> expect("wire", wire(t + 1, 0), 0)));
+        for (int press = 1; press <= 3; press++) {
+            int want = press % 2 == 1 ? 15 : 0;
+            steps.add(new Step("turns on: press " + press + " and hold -> " + want, () -> at(t - 2, 0).setType(Material.REDSTONE_BLOCK), 20,
+                () -> expect("wire", wire(t + 1, 0), want)));
+            steps.add(new Step("turns on: release " + press + " -> still " + want, () -> at(t - 2, 0).setType(Material.AIR), 10,
+                () -> expect("wire", wire(t + 1, 0), want)));
+        }
     }
 
     void buildLoad() {

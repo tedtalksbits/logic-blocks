@@ -8,7 +8,7 @@ import java.util.List;
 
 /** The client side of docs/PROTOCOL.md: channel names and message encodings (pure Java, unit-tested). */
 public final class Messages {
-	public static final int PROTOCOL = 1;
+	public static final int PROTOCOL = 2;   // must match ClientBridge.PROTOCOL; 2: program format 2 (v2 rules)
 	public static final String HELLO = "hello", WELCOME = "welcome", OPEN = "open", SAVE = "save", RESULT = "result", LIVE = "live", CLOSE = "close",
 		QUERY = "query", IS = "is";
 	public static final List<String> CLIENTBOUND = List.of(WELCOME, OPEN, RESULT, LIVE, IS);

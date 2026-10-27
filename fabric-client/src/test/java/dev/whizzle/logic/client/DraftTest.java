@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** The editor's working copy and the client's protocol decoding (no Minecraft needed). */
 class DraftTest {
-	static final Set<String> BLOCKS = Set.of("red_wool", "blue_wool", "stone"), ITEMS = Set.of("coal", "red_wool");
+	static final Set<String> BLOCKS = Set.of("red_wool", "blue_wool", "stone"), ITEMS = Set.of("coal", "red_wool", "diamond");
 
 	static Program sample() {
 		return new Program(List.of(
@@ -75,6 +75,56 @@ class DraftTest {
 		assertNull(build(d).problem(), "* means any item");
 	}
 
+	static Program v2() {
+		return new Program(List.of(
+			new Program.Rule(List.of(Condition.change(Side.WEST, true)), List.of(Action.toggle(15), Action.move("coal", Side.NORTH, Side.DOWN)))),
+			Action.keep(),
+			List.of(new Program.Rule(List.of(), Action.move("diamond", Side.UP, Side.DOWN)),
+				new Program.Rule(List.of(Condition.items(Side.EAST, "*", Op.GE, 1)), List.of(Action.move("*", Side.EAST, Side.SOUTH), Action.move("coal", Side.UP, Side.WEST)))));
+	}
+
+	@Test void v2ProgramsSurviveTheEditor() {
+		Draft d = new Draft(v2());
+		assertEquals(1, d.rules.size());
+		assertEquals(2, d.also.size());
+		assertEquals(1, d.rules.get(0).moves.size(), "the output rule's extra action");
+		assertTrue(d.also.get(0).conditions.isEmpty(), "always");
+		assertEquals(v2(), build(d).program());
+	}
+
+	@Test void alsoRulesAndMovesFromScratch() {
+		Draft d = new Draft();
+		Draft.Rule station = Draft.Rule.also();
+		assertTrue(station.conditions.isEmpty());
+		station.moves.get(0).id = "diamond";
+		d.also.add(station);
+		assertEquals(Program.EMPTY.withAlso(List.of(new Program.Rule(List.of(), Action.move("diamond", Side.UP, Side.DOWN)))), build(d).program());
+
+		station.moves.clear();
+		assertEquals("Also 1: add something for it to do (+ Move)", build(d).problem());
+		station.moves.add(new Draft.Move());
+		station.moves.get(0).id = "diamondd";
+		assertEquals("Also 1: no item called \"diamondd\"", build(d).problem());
+		station.moves.get(0).id = "diamond";
+		station.moves.get(0).to = Side.UP;
+		assertTrue(build(d).problem().contains("different side"));
+		assertEquals(2, Draft.Rule.maxMoves(true), "an output rule: its output plus 2 moves");
+		assertEquals(3, Draft.Rule.maxMoves(false));
+	}
+
+	@Test void changeConditions() {
+		Draft.Cond c = new Draft.Cond();
+		c.setKind(Condition.Kind.CHANGE);
+		assertTrue(c.turnsOn());
+		assertTrue(c.sides().contains(Side.ANY), "any side can turn on");
+		c.side = Side.ANY;
+		assertEquals(Condition.change(Side.ANY, true), c.toCondition());
+		c.flipTurn();
+		assertEquals(Condition.change(Side.ANY, false), c.toCondition());
+		c.setKind(Condition.Kind.SIGNAL);
+		assertTrue(c.op.numeric(), "back to a comparison");
+	}
+
 	@Test void cyclingWraps() {
 		assertEquals(Side.NORTH, Draft.next(List.of(Side.FACES), Side.DOWN));
 		assertEquals(Condition.Op.IS_NOT, Draft.next(List.of(Condition.Op.IS, Condition.Op.IS_NOT), Condition.Op.IS));
@@ -99,6 +149,9 @@ class DraftTest {
 		Wire.Reader in = new Wire.Reader(save);
 		assertEquals(1, in.int32()); assertEquals(2, in.int32()); assertEquals(3, in.int32());
 		assertEquals(sample(), Program.decode(in.bytes(Program.MAX_BYTES)));
-		assertEquals(Messages.PROTOCOL, Messages.welcome(new Wire.Writer().varInt(1).bytes()));
+		assertEquals(2, Messages.welcome(new Wire.Writer().varInt(2).bytes()));
+		assertEquals(2, Messages.PROTOCOL, "program format 2 needs protocol 2 on both sides");
+		byte[] openV2 = new Wire.Writer().int32(0).int32(0).int32(0).bool(true).utf("Alex").bytes(v2().encode()).bytes(snap.encode()).bytes();
+		assertEquals(v2(), Messages.open(openV2).program());
 	}
 }

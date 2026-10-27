@@ -1,14 +1,24 @@
 # Build: item sorter
 
-A hopper line that drops each chosen item into its own chest and passes everything else on. Each station is one
-block wide and uses two Logic Blocks: no comparators, no filler items, no signal strengths to tune. Unlike a vanilla
-sorter it sorts **unstackable items too** (tools, armour, potions, shulker boxes) and **jams nothing when a chest is
-full**: that station's items carry on to the overflow.
+A hopper line that drops each chosen item into its own chest and passes everything else on. It sorts **unstackable
+items too** (tools, armour, potions, shulker boxes) and **never jams on a full chest**: that station's items carry on
+to the overflow. There are two ways to build it:
 
-Tested on a real Paper 26.3 server by the self-test (`paper-selftest`, "sorter" steps): 60 mixed items and 190
-mixed items sorted with no wrong items and nothing stuck, at 2.4 items per second (a hopper's top speed is 2.5).
+| | **Moving items** (v2, recommended) | **Pure redstone** (v1) |
+|---|---|---|
+| Logic Blocks per station | 1 | 2 |
+| Height | 3 blocks | 5 blocks |
+| Rules | one line: `always -> Move diamond from Up to Down` | three rules, with a "full" code (7) and a stack count (320) |
+| Feed speed | any: a station can't take the wrong item | through one hopper, or a wrong item can slip through |
+| Build it | `/logic demo sorter` | `/logic demo redstone-sorter` |
 
-## Try it first
+Both are tested on a real Paper 26.3 server by the self-test (`paper-selftest`, "move sorter" and "sorter" steps).
+
+## Moving items (v2)
+
+![The v2 sorter: one station cut through, and the line from above](images/sorter.png)
+
+### Try it
 
 As an operator, stand somewhere open and run:
 
@@ -17,14 +27,55 @@ As an operator, stand somewhere open and run:
 /logic demo sorter iron_ingot gold_ingot redstone   (any 1 to 8 items)
 ```
 
-It builds a working sorter next to you (starting 1 block east and 2 south of your feet; it needs a clear space
-the length of the line, 2 wide and 5 high), with the Logic Blocks programmed and owned by you and the feeder chest
-stocked with a mix. Watch it sort, then open the Logic Blocks to see their rules, or break it down to see the
-layers. It's the same build the self-test checks on a real server.
+It builds a working sorter starting 1 block east and 3 south of your feet (it needs a clear space the length of the
+line, 1 wide and 4 high), with the Logic Blocks programmed and owned by you and the feeder chest stocked with a mix.
 
-![The sorter: one station cut through, and the line from above](images/sorter.png)
+### One station
 
-## One station
+```
+ layer +2   [ S: hopper, facing east ]   the line: passes items to the next station
+ layer +1   [ Logic Block            ]   Also: always -> Move diamond from Up to Down
+ layer  0   [ chest                  ]
+```
+
+In the editor: the **Also** tab, **+ Also**, leave it without conditions ("always"), and set its move to
+`diamond`, from **Up**, to **Down**. That's the whole station.
+
+### How it works
+
+- The Logic Block checks the hopper above it every 2 ticks. When a diamond is in it, it moves one diamond down into
+  the chest, at most one every 8 ticks (a hopper's speed).
+- It only ever takes diamonds, wherever they sit in the hopper, so it can't take a wrong item, however fast items
+  arrive.
+- Anything else, and diamonds when the chest is full, stay in the hopper, which passes them on along the line.
+- Several items per station: one "also" rule per item (or one rule with up to three moves).
+
+### Measured on a real server
+
+| Feed | Result |
+|---|---|
+| 60 mixed items through one hopper | all sorted, nothing stuck, 2.4 items per second |
+| Twice as fast (two inputs) | no wrong items; 12% of a station's items went past to the overflow, because a station moves one item per 8 ticks |
+| Station chest full | its items go to the overflow, nothing jams |
+
+### Limits
+
+- **Item ids only:** it can't tell enchanted books or potions apart by their contents.
+- **One item per 8 ticks per station.** A faster line lets some of a station's items go past (to the overflow,
+  never into a wrong chest). Use two stations for the same item if that matters.
+
+## Pure redstone (v1)
+
+Two Logic Blocks per station, only switching redstone: the first watches the line hopper and locks it when its item
+arrives, the second unlocks the hopper underneath that pulls the item out. It's a good way to see how far plain
+redstone outputs go, and every part of it is vanilla redstone behaviour.
+
+![The redstone sorter: one station cut through, and the line from above](images/sorter-redstone.png)
+
+`/logic demo redstone-sorter [item ...]` builds it, starting 1 block east and 2 south of your feet (a clear space the
+length of the line, 2 wide and 5 high).
+
+### One station
 
 The line runs east here, with the Logic Blocks on its north side. Looking along the line:
 
@@ -57,7 +108,7 @@ LB1 touches only S (and LB2). LB2 touches only X (and LB1). Stations sit side by
 Change `diamond` to the station's item. The 320 in LB2 is "X is full": 5 stacks, so 320 for items that stack to 64,
 80 for 16 (eggs, ender pearls), and 5 for items that don't stack (tools, potions).
 
-## How it works
+### How it works
 
 - **The item arrives in S, alone.** LB1 turns on: S is locked, so it stops passing items along. LB2 sees LB1 on
   and turns off: X unlocks and pulls the item down; D moves it into the chest. S is empty again, LB1 turns off,
@@ -70,7 +121,7 @@ Change `diamond` to the station's item. The 320 in LB2 is "X is full": 5 stacks,
 - **Full chest.** When the chest and D are full, X fills up. LB2 then says "full" with strength 7, LB1 stops
   taking its item, and it flows on to the overflow. When you empty the chest, the station starts taking items again.
 
-## Building it
+### Building it
 
 1. **Feed the line through one hopper.** Items must enter the first station no faster than one hopper delivers
    them. Several hoppers, a minecart, or a chest directly above a line hopper can push items in faster; then the
@@ -84,7 +135,7 @@ Change `diamond` to the station's item. The 320 in LB2 is "X is full": 5 stacks,
 5. **Orientation:** with the line running another way, keep LB1 and LB2 beside S and X on the same side and set
    "South" in the rules to the side they actually face. Look at a Logic Block with the mod to see its N, E, S, W.
 
-## Limits
+### Limits
 
 - **Item ids only.** It can't tell enchanted books, potions or tipped arrows apart by their contents: they share an
   id.

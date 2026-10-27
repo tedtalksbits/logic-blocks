@@ -97,7 +97,7 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
                 if (sender.hasPermission("logicblocks.admin")) {
                     sender.sendMessage(Component.text("/logic give [player] [amount]", NamedTextColor.YELLOW));
                     sender.sendMessage(Component.text("/logic status", NamedTextColor.YELLOW));
-                    sender.sendMessage(Component.text("/logic demo sorter [item ...]", NamedTextColor.YELLOW)
+                    sender.sendMessage(Component.text("/logic demo sorter|redstone-sorter [item ...]", NamedTextColor.YELLOW)
                         .append(Component.text("  build a working item sorter next to you", NamedTextColor.GRAY)));
                 }
             }
@@ -105,15 +105,23 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
         return true;
     }
 
-    /** /logic demo sorter [item ...]: builds docs/SORTER.md's sorter beside the player, programmed and stocked. */
+    /**
+     * /logic demo sorter [item ...]: the v2 sorter (one Logic Block per station, moving items);
+     * /logic demo redstone-sorter [item ...]: the pure-redstone sorter (two per station). Both from docs/SORTER.md,
+     * built beside the player, programmed, owned by them, with a stocked feeder chest.
+     */
     private void demo(CommandSender sender, String[] args) {
         if (!sender.hasPermission("logicblocks.admin")) { sender.sendMessage(Component.text("You don't have permission.", NamedTextColor.RED)); return; }
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return; }
-        if (args.length < 2 || !args[1].equalsIgnoreCase("sorter")) {
+        String which = args.length < 2 ? "" : args[1].toLowerCase(java.util.Locale.ROOT);
+        if (!which.equals("sorter") && !which.equals("redstone-sorter")) {
             p.sendMessage(Component.text("/logic demo sorter [item ...]", NamedTextColor.YELLOW)
-                .append(Component.text("  e.g. /logic demo sorter diamond emerald diamond_sword", NamedTextColor.GRAY)));
+                .append(Component.text("  one Logic Block per station, moving items", NamedTextColor.GRAY)));
+            p.sendMessage(Component.text("/logic demo redstone-sorter [item ...]", NamedTextColor.YELLOW)
+                .append(Component.text("  pure redstone: two per station, locking hoppers", NamedTextColor.GRAY)));
             return;
         }
+        boolean moving = which.equals("sorter");
         List<Material> sorted = new java.util.ArrayList<>();
         for (int i = 2; i < args.length; i++) {
             Material m = Material.matchMaterial(args[i]);
@@ -122,19 +130,22 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
         }
         if (sorted.isEmpty()) sorted.addAll(Demos.DEFAULT_SORTED);
         if (sorted.size() > Demos.MAX_STATIONS) { p.sendMessage(Component.text("At most " + Demos.MAX_STATIONS + " items.", NamedTextColor.RED)); return; }
-        // Two blocks east and three south of the player, at their feet: the line runs east, Logic Blocks on its north side.
+        // Two blocks east and three south of the player, at their feet; the line runs east.
         Block feet = p.getLocation().getBlock();
         int x = feet.getX() + 2, y = feet.getY(), z = feet.getZ() + 3;
-        Block blocked = Demos.sorterBlocked(p.getWorld(), x, y, z, sorted.size());
+        Block blocked = moving ? Demos.moveSorterBlocked(p.getWorld(), x, y, z, sorted.size()) : Demos.sorterBlocked(p.getWorld(), x, y, z, sorted.size());
         if (blocked != null) {
             p.sendMessage(Component.text("Not enough room: " + blocked.getType().getKey().getKey() + " at " + blocked.getX() + " " + blocked.getY() + " " + blocked.getZ()
-                + ". It needs a clear space " + (sorted.size() + 2) + " long, 2 wide and 5 high, starting 1 east and 2 south of you.", NamedTextColor.RED));
+                + ". It needs a clear space " + (sorted.size() + 2) + " long, " + (moving ? "1 wide and 4" : "2 wide and 5")
+                + " high, starting 1 east and " + (moving ? "3" : "2") + " south of you.", NamedTextColor.RED));
             return;
         }
-        Demos.Sorter built = Demos.sorter(manager, p.getWorld(), x, y, z, sorted, p.getUniqueId(), p.getName());
+        Demos.Sorter built = moving
+            ? Demos.moveSorter(manager, p.getWorld(), x, y, z, sorted, p.getUniqueId(), p.getName())
+            : Demos.sorter(manager, p.getWorld(), x, y, z, sorted, p.getUniqueId(), p.getName());
         Demos.fillSample(Demos.inventory(built.feeder()), sorted);
-        p.sendMessage(Component.text("Built a sorter for " + sorted.stream().map(m -> m.getKey().getKey()).toList()
-            + ". The line runs east; the feeder chest (top, west end) is already stocked with a mix. Each item lands in the chest under its station, the rest in the overflow chest at the east end. How it works: docs/SORTER.md", NamedTextColor.GREEN));
+        p.sendMessage(Component.text("Built a" + (moving ? "" : " redstone") + " sorter for " + sorted.stream().map(m -> m.getKey().getKey()).toList()
+            + ". The line runs east; the feeder chest (top, west end) is stocked with a mix. Each item lands in the chest under its station, the rest in the overflow chest at the east end. How it works: docs/SORTER.md", NamedTextColor.GREEN));
     }
 
     private static int parse(String s) { try { return Integer.parseInt(s); } catch (NumberFormatException e) { return 1; } }
@@ -143,7 +154,7 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) return sender.hasPermission("logicblocks.admin") ? List.of("info", "give", "status", "demo") : List.of("info");
         if (args.length == 2 && args[0].equalsIgnoreCase("give")) return null; // player names
-        if (args.length == 2 && args[0].equalsIgnoreCase("demo")) return List.of("sorter");
+        if (args.length == 2 && args[0].equalsIgnoreCase("demo")) return List.of("sorter", "redstone-sorter");
         if (args.length >= 3 && args[0].equalsIgnoreCase("demo")) {
             String prefix = args[args.length - 1].toLowerCase(java.util.Locale.ROOT);
             return java.util.Arrays.stream(Material.values()).filter(m -> m.isItem() && !m.isAir() && !m.isLegacy())

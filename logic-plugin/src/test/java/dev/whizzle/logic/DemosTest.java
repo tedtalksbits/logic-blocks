@@ -35,9 +35,9 @@ class DemosTest {
     String lastMessage() { String m, last = null; while ((m = op.nextMessage()) != null) last = m; return last; }
 
     @Test void buildsAProgrammedStockedSorterBesideThePlayer() {
-        op.performCommand("logic demo sorter diamond emerald");
+        op.performCommand("logic demo redstone-sorter diamond emerald");
         String reply = lastMessage();
-        assertTrue(reply != null && reply.contains("Built a sorter"), "confirmation: " + reply);
+        assertTrue(reply != null && reply.contains("Built a redstone sorter"), "confirmation: " + reply);
         // Feet at (0, 70, 0): line from x 2, z 3; chests at y 70, line hoppers at y 73.
         for (int i = 0; i < 2; i++) {
             assertEquals(Material.CHEST, world.getBlockAt(2 + i, 70, 3).getType());
@@ -58,16 +58,34 @@ class DemosTest {
     }
 
     @Test void defaultsToDiamondEmeraldSword() {
-        op.performCommand("logic demo sorter");
+        op.performCommand("logic demo redstone-sorter");
         assertEquals(6, plugin.manager().nodes().size());
         assertEquals(Demos.stationGate(Material.DIAMOND_SWORD), plugin.manager().at(world.getBlockAt(4, 72, 2)).orElseThrow().program());
         assertEquals(new Program(Demos.stationGate(Material.DIAMOND_SWORD).rules(), Demos.stationGate(Material.DIAMOND_SWORD).otherwise()),
             Demos.stationGate(Material.DIAMOND_SWORD));
     }
 
+    @Test void sorterIsOneLogicBlockPerStationMovingItsItem() {
+        op.performCommand("logic demo sorter diamond diamond_sword");
+        String reply = lastMessage();
+        assertTrue(reply != null && reply.contains("Built a sorter"), "confirmation: " + reply);
+        // Feet at (0, 70, 0): stations from x 2 at z 3: chest y 70, Logic Block y 71, line hopper y 72.
+        for (int i = 0; i < 2; i++) {
+            assertEquals(Material.CHEST, world.getBlockAt(2 + i, 70, 3).getType());
+            assertEquals(Material.HOPPER, world.getBlockAt(2 + i, 72, 3).getType());
+        }
+        LogicManager m = plugin.manager();
+        assertEquals(2, m.nodes().size());
+        assertEquals(Demos.moveStation(Material.DIAMOND_SWORD), m.at(world.getBlockAt(3, 71, 3)).orElseThrow().program());
+        assertEquals(List.of("otherwise -> output 0", "also 1. always -> move diamond from up to down"),
+            Demos.moveStation(Material.DIAMOND).describe());
+        assertEquals(Material.CHEST, world.getBlockAt(4, 72, 3).getType(), "overflow");
+        assertTrue(Demos.inventory(world.getBlockAt(1, 73, 3)).contains(Material.DIAMOND_SWORD), "stocked");
+    }
+
     @Test void refusesWhenSomethingIsInTheWay() {
         world.getBlockAt(3, 72, 2).setType(Material.STONE);
-        op.performCommand("logic demo sorter diamond emerald");
+        op.performCommand("logic demo redstone-sorter diamond emerald");
         assertTrue(lastMessage().contains("Not enough room: stone at 3 72 2"));
         assertEquals(0, plugin.manager().nodes().size(), "nothing built");
         assertEquals(Material.AIR, world.getBlockAt(2, 70, 3).getType());
@@ -80,6 +98,7 @@ class DemosTest {
         guest.performCommand("logic demo sorter");
         assertEquals(0, plugin.manager().nodes().size());
         assertTrue(plugin.onTabComplete(op, null, "logic", new String[]{"demo", "sorter", "diamond_sw"}).contains("diamond_sword"));
+        assertEquals(List.of("sorter", "redstone-sorter"), plugin.onTabComplete(op, null, "logic", new String[]{"demo", ""}));
         assertEquals(List.of("info"), plugin.onTabComplete(guest, null, "logic", new String[]{""}));
     }
 

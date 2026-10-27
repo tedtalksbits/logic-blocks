@@ -29,6 +29,54 @@ public final class Demos {
     /** What a sorter was built from: the feeder chest, each station's chest, and the overflow chest. */
     public record Sorter(Block feeder, List<Block> chests, Block overflow) {}
 
+    // ---- the v2 sorter: one Logic Block per station, moving items ----
+
+    /**
+     * The blocks the v2 sorter occupies. The line runs east at y + 2 from a feeder hopper at x - 1 (under a feeder chest);
+     * each station column is chest (y), Logic Block (y + 1), line hopper (y + 2); the overflow chest ends the line.
+     */
+    public static List<Block> moveSorterSpace(World w, int x, int y, int z, int stations) {
+        List<Block> space = new ArrayList<>();
+        for (int i = 0; i < stations; i++) for (int dy = 0; dy <= 2; dy++) space.add(w.getBlockAt(x + i, y + dy, z));
+        space.add(w.getBlockAt(x - 1, y + 2, z));
+        space.add(w.getBlockAt(x - 1, y + 3, z));
+        space.add(w.getBlockAt(x + stations, y + 2, z));
+        return space;
+    }
+
+    public static Block moveSorterBlocked(World w, int x, int y, int z, int stations) {
+        for (Block b : moveSorterSpace(w, x, y, z, stations)) if (!b.getType().isAir() && !b.isReplaceable()) return b;
+        return null;
+    }
+
+    /** Builds the v2 sorter: under each line hopper a Logic Block that moves its item down into the chest below it. */
+    public static Sorter moveSorter(LogicManager manager, World w, int x, int y, int z, List<Material> sorted, UUID owner, String ownerName) {
+        if (sorted.isEmpty() || sorted.size() > MAX_STATIONS) throw new IllegalArgumentException("1 to " + MAX_STATIONS + " stations");
+        List<Block> chests = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            Block chest = w.getBlockAt(x + i, y, z);
+            chest.setType(Material.CHEST);
+            chests.add(chest);
+            Block lb = w.getBlockAt(x + i, y + 1, z);
+            lb.setType(LogicItem.BLOCK);
+            manager.create(lb, moveStation(sorted.get(i)), owner, ownerName);
+            hopper(w.getBlockAt(x + i, y + 2, z), BlockFace.EAST);
+        }
+        hopper(w.getBlockAt(x - 1, y + 2, z), BlockFace.EAST);
+        Block feeder = w.getBlockAt(x - 1, y + 3, z);
+        feeder.setType(Material.CHEST);
+        Block overflow = w.getBlockAt(x + sorted.size(), y + 2, z);
+        overflow.setType(Material.CHEST);
+        return new Sorter(feeder, chests, overflow);
+    }
+
+    /** The whole v2 station program: also, always, move the item from up (the line hopper) to down (the chest). */
+    public static Program moveStation(Material item) {
+        return Program.EMPTY.withAlso(List.of(new Program.Rule(List.of(), Action.move(id(item), Side.UP, Side.DOWN))));
+    }
+
+    // ---- the v1 sorter: pure redstone, two Logic Blocks per station ----
+
     /**
      * The blocks a sorter with {@code stations} stations occupies. The line runs east from (x, y + 3, z): a feeder
      * hopper at x - 1 under a feeder chest, one station per block from x, the overflow chest at the end. Station

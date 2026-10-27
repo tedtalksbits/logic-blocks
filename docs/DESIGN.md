@@ -42,6 +42,39 @@ part of a dust line's power is its own.
   clocks instead of oscillating every tick. Desired output is never dropped, only delayed.
 - The output is re-applied if something else changed the block's power.
 
+## Rules v2: output and "also"
+
+A program has two lists. **Output** rules work as in v1: the first true rule's first action sets the output
+(*if / else if / else*). **Also** rules all run when true, every check (independent statements). Before v2, a rule
+that moved items would have had to win "first match" against the rules setting the output; two lists avoid that
+clash, and read like code a programmer knows. Rules hold up to 3 actions; only an output rule's first action is an
+output, the rest act on the world (`Engine.worldActions` lists them in order). A rule with no conditions always
+holds.
+
+**Turns on / off** (`Condition.Kind.CHANGE`) compares the side's signal with the previous check (`Engine.State.signals`,
+not stored: after a restart nothing "turns on" at the first check). Checks every 2 ticks catch an observer's
+2-tick pulse.
+
+**Format 2** (`Program.FORMAT`) adds the actions lists, the "also" list and the move fields. `Program.decode` still
+reads format 1, so v1 blocks and items load unchanged and are saved as format 2 the next time they change. The
+protocol went to 2 with it: an older client says it needs updating instead of misreading rules.
+
+## Beyond redstone: the five rules
+
+Anything that does more than switch redstone (so far: **Move items**) must pass all five:
+
+1. **Only what vanilla blocks can already do, made easier.** A move is what a hopper does, through the faces a
+   hopper would use (`Mover`: furnaces take input from the top, fuel from the sides and bottom, give results from the
+   bottom; only containers a hopper works with).
+2. **Touching blocks only.** No range, and never loads a chunk.
+3. **No faster than the vanilla equivalent.** One item per 8 ticks per Logic Block (`Mover.COOLDOWN`), measured on a
+   real server at exactly 2.5 items per second.
+4. **Nothing from nothing.** Items move; none are created, duplicated or destroyed.
+5. **Respects claims and protection.** Every move fires `InventoryMoveItemEvent`, as a hopper's does, and is skipped
+   if a plugin cancels it.
+
+Several moves in one block share the one-item-per-8-ticks budget; the first move that can happen in a check wins.
+
 ## Storage
 
 Each block's program, owner and state live in its **chunk's persistent data** under

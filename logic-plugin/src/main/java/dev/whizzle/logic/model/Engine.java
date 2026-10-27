@@ -18,13 +18,30 @@ public final class Engine {
         int players(int radius);
     }
 
-    /** Result of checking every condition. {@code matched} is the first rule that holds, or -1 for "otherwise". */
-    public record Evaluation(int matched, boolean[][] truth, String[][] readings) {}
+    /**
+     * Result of checking every condition. {@code matched} is the first output rule that holds, or -1 for "otherwise";
+     * {@code alsoTrue} says which "also" rules hold. {@code truth} and {@code readings} cover the output rules, then the
+     * "also" rules. {@code signals} holds each side's signal where a turns-on/off condition read it (-1 elsewhere), for
+     * the next check to compare with.
+     */
+    public record Evaluation(int matched, boolean[][] truth, String[][] readings, boolean[] alsoTrue, int[] signals) {
+        public Evaluation(int matched, boolean[][] truth, String[][] readings) { this(matched, truth, readings, new boolean[0], unknownSignals()); }
+    }
 
-    public static Evaluation evaluate(Program program, Inputs in) {
-        List<Program.Rule> rules = program.rules();
+    /** Signal per side (Side ordinal, ANY included) as last seen; -1 = unknown, so nothing "turns on" at the first check. */
+    public static int[] unknownSignals() { int[] a = new int[Side.values().length]; java.util.Arrays.fill(a, -1); return a; }
+
+    public static Evaluation evaluate(Program program, Inputs in) { return evaluate(program, in, null); }
+
+    /** {@code previous}: the signals the last check saw ({@link Evaluation#signals()}, merged), or null if unknown. */
+    public static Evaluation evaluate(Program program, Inputs in, int[] previous) {
+        List<Program.Rule> rules = new java.util.ArrayList<>(program.rules());
+        int outputs = rules.size();
+        rules.addAll(program.also());
         boolean[][] truth = new boolean[rules.size()][];
         String[][] readings = new String[rules.size()][];
+        boolean[] alsoTrue = new boolean[program.also().size()];
+        int[] seen = unknownSignals();
         int matched = -1;
         for (int r = 0; r < rules.size(); r++) {
             List<Condition> cs = rules.get(r).conditions();
@@ -56,15 +73,42 @@ public final class Engine {
                         reading = String.valueOf(n);
                         ok = cond.op().test(n, cond.number());
                     }
+                    case CHANGE -> {
+                        int now = in.signal(cond.side());
+                        int before = previous == null ? -1 : previous[cond.side().ordinal()];
+                        seen[cond.side().ordinal()] = now;
+                        reading = before < 0 ? "signal " + now : "signal " + before + " -> " + now;
+                        ok = before >= 0 && (cond.turnsOn() ? before == 0 && now > 0 : before > 0 && now == 0);
+                    }
                     default -> throw new IllegalStateException();
                 }
                 truth[r][c] = ok;
                 readings[r][c] = reading;
                 all &= ok;
             }
-            if (all && matched < 0) matched = r;
+            if (r < outputs) { if (all && matched < 0) matched = r; }
+            else alsoTrue[r - outputs] = all;
         }
-        return new Evaluation(matched, truth, readings);
+        return new Evaluation(matched, truth, readings, alsoTrue, seen);
+    }
+
+    /** Keeps the signals this check saw for the next one; sides it didn't read keep their older value. */
+    public static void remember(int[] previous, Evaluation e) {
+        for (int i = 0; i < previous.length; i++) if (e.signals()[i] >= 0) previous[i] = e.signals()[i];
+    }
+
+    /**
+     * The world actions this check runs, in order: the matched output rule's extra actions, then every true "also"
+     * rule's actions.
+     */
+    public static List<Action> worldActions(Program program, Evaluation e) {
+        List<Action> out = new java.util.ArrayList<>();
+        if (e.matched() >= 0) {
+            List<Action> as = program.rules().get(e.matched()).actions();
+            for (int i = 1; i < as.size(); i++) out.add(as.get(i));
+        }
+        for (int r = 0; r < program.also().size(); r++) if (e.alsoTrue()[r]) out.addAll(program.also().get(r).actions());
+        return out;
     }
 
     /** A block's memory between evaluations. {@code matched} -2 means never evaluated. */
@@ -72,6 +116,10 @@ public final class Engine {
         public int matched = -2, output;
         public long pulseUntil = -1;
         public boolean toggled;
+        /** Signals the last check saw, for turns-on/off (not stored: after a reload nothing "turns on" at once). */
+        public final int[] signals = unknownSignals();
+        /** Tick before which this block may not move another item (hopper speed). */
+        public long nextMove;
 
         public State() {}
         public State(int matched, int output, long pulseUntil, boolean toggled) {

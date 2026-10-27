@@ -25,12 +25,13 @@ next to every condition, what the block sees right now and whether it's true, be
 Ready-made jars are on the [Releases](https://github.com/tedtalksbits/logic-blocks/releases) page (the release is
 named after the plugin version; the client's version is in the notes), or build them yourself (below).
 
-**Server:** copy `logic-plugin/build/libs/logic-plugin-0.2.0.jar` into `plugins/` and restart. Settings are in
+**Server:** copy `logic-plugin/build/libs/logic-plugin-0.3.0.jar` into `plugins/` and restart. Settings are in
 `plugins/LogicBlocks/config.yml`.
 
 **Each player who wants to edit rules:** Fabric for Minecraft 26.3 (Loader 0.19.5), then put
-`logic-blocks-client-0.3.0.jar` and `fabric-api-0.164.0+26.3.jar` in `.minecraft/mods`. (Client 0.1.0 is the
-same editor built for 26.2. Side labels need client 0.3.0 and plugin 0.2.0; older pairs still work without them.)
+`logic-blocks-client-0.4.0.jar` and `fabric-api-0.164.0+26.3.jar` in `.minecraft/mods`. Plugin 0.3.0 needs client
+0.4.0 (rules v2); an older client says it needs updating instead of opening the editor. Existing Logic Blocks and
+Logic Block items keep their rules: v1 programs are read and upgraded automatically.
 
 ## Using it
 
@@ -46,14 +47,22 @@ same editor built for 26.2. Side labels need client 0.3.0 and plugin 0.2.0; olde
    item that's actually there.
 6. **Save**. The block's output changes within a tick or two.
 
-**Things to build:** an item sorter that also sorts tools and never jams on a full chest
+**Things to build:** an item sorter that also sorts tools and never jams on a full chest: one Logic Block per item
 ([docs/SORTER.md](docs/SORTER.md); operators can have it built for them with `/logic demo sorter`).
 
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
 
 ### Rule reference
 
-Each rule has 1 to 3 conditions (all must be true) and one action. Up to 8 rules per block, plus *otherwise*.
+A Logic Block has two lists of rules, on two tabs in the editor:
+
+- **Output**: the first rule whose conditions are all true sets the redstone output (like *if / else if / else*),
+  and *otherwise* covers the rest. Up to 8 rules.
+- **Also**: *every* rule whose conditions are all true runs, every check, alongside the output rules. Up to 8 rules.
+  For moving items.
+
+Each rule has 0 to 3 conditions (all must be true; none means *always*) and up to 3 actions. An output rule's first
+action sets the output; the others, and all of an "also" rule's actions, are moves.
 
 | Condition | Reads | Compare |
 |---|---|---|
@@ -61,6 +70,7 @@ Each rule has 1 to 3 conditions (all must be true) and one action. Up to 8 rules
 | **Signal** | the redstone signal coming in on a side, or the strongest of any side | = != < <= > >= 0..15 |
 | **Items** | how many of an item (or `*` for any item) the chest, barrel, hopper... on that side holds | = != < <= > >= a number |
 | **Players** | players within N blocks (1..16) | = != < <= > >= a number |
+| **Change** | the signal on a side (or any side) has just turned on or off | turns on / turns off: true for one check, so a held button counts once |
 
 | Action | Does |
 |---|---|
@@ -68,10 +78,22 @@ Each rule has 1 to 3 conditions (all must be true) and one action. Up to 8 rules
 | **Pulse** N for T ticks | when the rule starts matching, outputs N for T ticks (20 = 1 second), then 0 |
 | **Toggle** N | when the rule starts matching, flips between N and 0, and stays there |
 | **Keep** | leaves the output as it is |
+| **Move** item from side to side | moves one item (or `*` for any) from the container on one side to the container on another, every 8 ticks at most (a hopper's speed). Not an output: it goes after an output rule's output, or in an "also" rule |
 
 *Otherwise* can output a number or **Keep**. Use Keep with Toggle and Pulse so they aren't overwritten when the
-input goes away. Example: a button feeding a repeater that points into the west side, `signal west > 0 -> toggle 15`,
-otherwise **Keep**, is a door latch in one block.
+input goes away. Example: a button feeding a repeater that points into the west side, `signal west turns on -> toggle
+15`, otherwise **Keep**, is a door latch in one block.
+
+**Moving items** works like a hopper, never more: only between containers touching the Logic Block (chests, barrels,
+hoppers, droppers, dispensers, shulker boxes, furnaces), one item every 8 ticks, nothing created or lost. Furnaces take
+smelting input through their top and fuel through their sides, and give results out of their bottom, as for hoppers.
+Protection plugins that stop hoppers stop it too. Examples:
+
+```
+Also:   always -> move diamond from up to down                     a sorter station (docs/SORTER.md)
+Also:   when coal north >= 1 and coal down < 8 -> move coal from north to down     keep a furnace fuelled
+Output: when signal west turns on -> toggle 15, then move * from up to down    a latch that also empties a chest
+```
 
 ### Good to know
 
@@ -105,7 +127,8 @@ otherwise **Keep**, is a door latch in one block.
 | `/logic info` | everyone | Shows the rules of the Logic Block you're looking at |
 | `/logic give [player] [amount]` | operators | Gives Logic Blocks |
 | `/logic status` | operators | How many are loaded and how many editors are open |
-| `/logic demo sorter [item ...]` | operators | Builds a working, stocked item sorter next to you ([docs/SORTER.md](docs/SORTER.md)) |
+| `/logic demo sorter [item ...]` | operators | Builds a working, stocked item sorter next to you, one Logic Block per station ([docs/SORTER.md](docs/SORTER.md)) |
+| `/logic demo redstone-sorter [item ...]` | operators | The same with pure redstone, two Logic Blocks per station |
 
 `logicblocks.use` (everyone): place Logic Blocks and edit your own. `logicblocks.admin` (operators): edit anyone's,
 `give`, `status`.
@@ -113,9 +136,9 @@ otherwise **Keep**, is a door latch in one block.
 ## Building
 
 Plugin (from the repo root): `gradle build` with Java 25. It runs the tests and writes
-`logic-plugin/build/libs/logic-plugin-0.2.0.jar`.
+`logic-plugin/build/libs/logic-plugin-0.3.0.jar`.
 
-Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.3.0.jar`. The
+Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.4.0.jar`. The
 client compiles the plugin's rule model (`dev.whizzle.logic.model`) from `logic-plugin/src`, so both sides share
 one implementation of the rules, their encoding and their evaluation.
 
