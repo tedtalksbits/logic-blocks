@@ -27,15 +27,17 @@ final class PickBlock implements Listener {
         Player p = e.getPlayer();
         PlayerInventory inv = p.getInventory();
         int slot = bestSlot(inv, node.program());
-        if (slot >= 0) { e.setSourceSlot(slot); return; }
+        if (slot >= 0) {
+            e.setSourceSlot(slot);
+            // Paper selects the TARGET slot when the source is already on the hotbar, and otherwise swaps the source
+            // into the target. The target it chose was for the plain daylight detector, so choose it again.
+            e.setTargetSlot(slot < 9 ? slot : hotbarSlotFor(inv));
+            return;
+        }
         e.setCancelled(true);   // no Logic Block in the inventory: don't pick a plain daylight detector
         if (p.getGameMode() != GameMode.CREATIVE) return;
         ItemStack item = LogicItem.create(e.isIncludeData() ? node.program() : Program.EMPTY);
-        // Like vanilla's creative pick: the selected slot if it's empty, else the first empty hotbar slot, else replace
-        // the selected slot.
-        int target = inv.getHeldItemSlot();
-        if (!empty(inv.getItem(target)))
-            for (int i = 0; i < 9; i++) if (empty(inv.getItem(i))) { target = i; break; }
+        int target = hotbarSlotFor(inv);
         inv.setItem(target, item);
         inv.setHeldItemSlot(target);
     }
@@ -50,6 +52,14 @@ final class PickBlock implements Listener {
             if (any < 0) any = i;
         }
         return any;
+    }
+
+    /** Like vanilla: the selected slot if it's empty, else the first empty hotbar slot, else the selected slot. */
+    static int hotbarSlotFor(PlayerInventory inv) {
+        int selected = inv.getHeldItemSlot();
+        if (empty(inv.getItem(selected))) return selected;
+        for (int i = 0; i < 9; i++) if (empty(inv.getItem(i))) return i;
+        return selected;
     }
 
     private static boolean empty(ItemStack item) { return item == null || item.getType().isAir(); }
