@@ -65,6 +65,9 @@ rules, and to judge how it feels.
 | 37 | **Middle-click** a Logic Block (survival) with a plain daylight detector and a Logic Block in your inventory | The Logic Block is picked, not the plain detector. With only plain detectors: nothing is picked. |
 | 38 | Creative: middle-click a sorter station, then **Ctrl + middle-click** it | A blank Logic Block in your hand; then one whose tooltip lists "move diamond from up to down". Place it: it sorts diamonds. |
 | 39 | Break a sorter station's Logic Block (survival) and place it again | It keeps its When rule (this was lost before). |
+| 40 | **Typing ids:** in a Move or Items box, type `dia` | `mond` shows in grey after it; **Tab** makes it `diamond`. Type `diamond_` and Tab: `diamond_axe`. In a Block box, `red_w` + Tab gives `red_wool`. |
+| 41 | **hand:** hold a diamond, open the editor, look at a Move row | A **hand** button next to the id (and next to **use**, if shown). Click it: the id becomes `diamond` and **hand** goes away. In a Block condition it fills the block's id (holding cobblestone: `cobblestone`); holding a non-block item, no **hand** there. |
+| 42 | **Wide screen:** on your ultrawide, open the editor, then `/logicblocks` | The editor sits in a centred column at most 640 GUI pixels wide, on a darker panel, with Save and Close at its right edge. The label settings are centred the same way. On a normal screen nothing changes. |
 
 ## Please report
 

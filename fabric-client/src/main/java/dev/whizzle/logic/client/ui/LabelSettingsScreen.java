@@ -40,7 +40,9 @@ public final class LabelSettingsScreen extends Screen {
 
 	@Override
 	protected void init() {
-		controlsW = Math.clamp(width / 2 - 30, 150, 200);
+		cw = Math.min(width, LogicScreen.MAX_WIDTH);
+		shift = (width - cw) / 2;
+		controlsW = Math.clamp(cw / 2 - 30, 150, 200);
 		previewX = 20 + controlsW + 16;
 		int x = 20, y = 30, step = 24;
 		LabelStyle s = Settings.labelStyle;
@@ -79,7 +81,12 @@ public final class LabelSettingsScreen extends Screen {
 			rebuildWidgets();
 		}).pos(x, by).size(half, 20).build());
 		addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).pos(x + half + 4, by).size(half, 20).build());
+		// Laid out as if the screen were cw wide; centre it.
+		if (shift > 0) for (var child : children()) if (child instanceof net.minecraft.client.gui.components.AbstractWidget w) w.setX(w.getX() + shift);
 	}
+
+	/** Content width (at most LogicScreen.MAX_WIDTH) and how far it's moved right to be centred. */
+	private int cw, shift;
 
 	/** "Labels: On  (key N)": the key that toggles them in game, as the player has bound it. */
 	private Component onOffText() {
@@ -105,7 +112,14 @@ public final class LabelSettingsScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
 		super.extractRenderState(g, mouseX, mouseY, delta);
-		g.centeredText(font, title, width / 2, 10, AQUA);
+		g.pose().pushMatrix();
+		g.pose().translate(shift, 0);
+		drawContent(g);
+		g.pose().popMatrix();
+	}
+
+	private void drawContent(GuiGraphicsExtractor g) {
+		g.centeredText(font, title, cw / 2, 10, AQUA);
 		if (hintY >= 0) {
 			g.text(font, font.plainSubstrByWidth("Shown on the Logic Block you look at.", controlsW), 20, hintY, GRAY);
 		}
@@ -114,7 +128,7 @@ public final class LabelSettingsScreen extends Screen {
 
 	/** Top view above, side view below, scaled to the space right of the controls. */
 	private void preview(GuiGraphicsExtractor g) {
-		int left = previewX, right = width - 16, top = 28, bottom = height - 12;
+		int left = previewX, right = cw - 16, top = 28, bottom = height - 12;
 		int w = right - left, h = bottom - top;
 		if (w < 60 || h < 80) return;
 		g.fill(left, top, right, bottom, PANEL);

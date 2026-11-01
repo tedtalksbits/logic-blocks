@@ -26,7 +26,13 @@ import java.util.function.Consumer;
 public final class LogicScreen extends Screen {
 	static final int WHITE = 0xFFFFFFFF, GRAY = 0xFFB8C0CC, GREEN = 0xFF6EE07A, RED = 0xFFFF6B6B, GOLD = 0xFFFFC857, AQUA = 0xFF6FD3FF, PANEL = 0x90101418;
 	private static final int ROW = 36;
+	/** The editor is laid out in a centred column at most this wide (GUI pixels), like a page with a max width. */
+	static final int MAX_WIDTH = 640;
 	private int listW = 112;
+	/** Content width and left edge of the centred column. */
+	private int cw, left;
+	private final java.util.Map<EditBox, IdCompletion> idBoxes = new java.util.HashMap<>();
+	private static IdCompletion blockIds, itemIds;
 
 	private final Messages.Open open;
 	private final Draft draft;
@@ -70,16 +76,19 @@ public final class LogicScreen extends Screen {
 	@Override
 	protected void init() {
 		boolean edit = open.editable();
-		listW = Math.clamp(width / 4, 112, 180);
+		cw = Math.min(width, MAX_WIDTH);
+		left = (width - cw) / 2;
+		idBoxes.clear();
+		listW = Math.clamp(cw / 4, 112, 180);
 		selected = Math.min(selected, Math.max(0, draft.rules.size() - 1));
 		selectedAlso = Math.min(selectedAlso, Math.max(0, draft.also.size() - 1));
 
 		// Top bar
-		Button save = addRenderableWidget(Button.builder(Component.literal("Save"), b -> save()).pos(width - 110, 4).size(50, 18).build());
+		Button save = addRenderableWidget(Button.builder(Component.literal("Save"), b -> save()).pos(cw - 110, 4).size(50, 18).build());
 		save.active = edit;
-		addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose()).pos(width - 56, 4).size(50, 18).build());
+		addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose()).pos(cw - 56, 4).size(50, 18).build());
 		addRenderableWidget(Button.builder(Component.literal("Labels"), b -> dev.whizzle.logic.client.LogicClient.openSettings(this))
-			.pos(width - 164, 4).size(50, 18).build());
+			.pos(cw - 164, 4).size(50, 18).build());
 
 		// Tabs: Output | Also
 		int half = (listW - 2) / 2;
@@ -123,6 +132,9 @@ public final class LogicScreen extends Screen {
 
 		// Selected rule
 		if (has) ruleEditor(list.get(sel()), !alsoTab, edit);
+
+		// Everything above was placed as if the screen were cw wide; move it into the centred column.
+		if (left > 0) for (var child : children()) if (child instanceof net.minecraft.client.gui.components.AbstractWidget w) w.setX(w.getX() + left);
 	}
 
 	private Component tabText(String name, int n, boolean on) {
@@ -166,8 +178,11 @@ public final class LogicScreen extends Screen {
 			}
 			int index = c;
 			addRenderableWidget(Button.builder(Component.literal("x"), b -> { rule.conditions.remove(index); changed(); }).pos(x + 2, y).size(16, 18).build()).active = edit;
-			if (edit && (cond.kind == Condition.Kind.BLOCK || cond.kind == Condition.Kind.ITEMS) && suggestion(cond) != null)
-				addRenderableWidget(Button.builder(Component.literal("use"), b -> { cond.id = suggestion(cond); changed(); }).pos(x0 + 48, y + 20).size(28, 13).build());
+			if (edit && (cond.kind == Condition.Kind.BLOCK || cond.kind == Condition.Kind.ITEMS)) {
+				int bx = x0 + 48;
+				if (suggestion(cond) != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { cond.id = suggestion(cond); changed(); }).pos(bx, y + 20).size(28, 13).build()); bx += 30; }
+				handButton(bx, y + 20, cond.id, cond.kind == Condition.Kind.BLOCK, v -> cond.id = v);
+			}
 			y += ROW;
 		}
 		Button addCond = addRenderableWidget(Button.builder(Component.literal("+ Condition"), b -> { rule.conditions.add(new Draft.Cond()); changed(); })
@@ -193,8 +208,11 @@ public final class LogicScreen extends Screen {
 			int index = m;
 			addRenderableWidget(Button.builder(Component.literal("x"), b -> { rule.moves.remove(index); changed(); }).pos(x + 2, y).size(16, 18).build()).active = edit;
 			String use = moveSuggestion(move);
-			if (edit && use != null)
-				addRenderableWidget(Button.builder(Component.literal("use"), b -> { move.id = use; changed(); }).pos(x0 + 34, y + 20).size(28, 13).build());
+			if (edit) {
+				int bx = x0 + 34;
+				if (use != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { move.id = use; changed(); }).pos(bx, y + 20).size(28, 13).build()); bx += 30; }
+				handButton(bx, y + 20, move.id, false, v -> move.id = v);
+			}
 			y += ROW;
 		}
 		Button addMove = addRenderableWidget(Button.builder(Component.literal("+ Move items"), b -> { rule.moves.add(new Draft.Move()); changed(); })
@@ -247,9 +265,58 @@ public final class LogicScreen extends Screen {
 		EditBox box = addRenderableWidget(new EditBox(font, x, y, w, 18, Component.literal(block ? "block" : "item")));
 		box.setMaxLength(Condition.MAX_ID);
 		box.setValue(value);
-		box.setResponder(v -> { set.accept(v.trim().toLowerCase(Locale.ROOT)); if (!v.equals(value)) dirty = true; });
+		IdCompletion ids = ids(block);
+		box.setSuggestion(edit ? ids.suggestion(value) : null);
+		box.setResponder(v -> {
+			set.accept(v.trim().toLowerCase(Locale.ROOT));
+			if (!v.equals(value)) dirty = true;
+			box.setSuggestion(ids.suggestion(v));   // grey rest of the id; Tab accepts it
+		});
 		box.setEditable(edit);
+		if (edit) idBoxes.put(box, ids);
 		return x + w + 2;
+	}
+
+	/** Every block or item id the game knows, for completion. */
+	private static IdCompletion ids(boolean block) {
+		if (block) {
+			if (blockIds == null) blockIds = new IdCompletion(BuiltInRegistries.BLOCK.keySet().stream().map(Identifier::toString).toList());
+			return blockIds;
+		}
+		if (itemIds == null) itemIds = new IdCompletion(BuiltInRegistries.ITEM.keySet().stream().map(Identifier::toString).toList());
+		return itemIds;
+	}
+
+	/** Tab in a block or item box accepts its suggestion (otherwise Tab moves between boxes as usual). */
+	@Override
+	public boolean keyPressed(net.minecraft.client.input.KeyEvent key) {
+		if (key.key() == com.mojang.blaze3d.platform.InputConstants.KEY_TAB && getFocused() instanceof EditBox box && idBoxes.containsKey(box)) {
+			String full = idBoxes.get(box).complete(box.getValue());
+			if (full != null) {
+				box.setValue(full);
+				box.moveCursorToEnd(false);
+				return true;
+			}
+		}
+		return super.keyPressed(key);
+	}
+
+	/** The id of what the player holds (main hand, else off hand): a block's id for block checks. Null if nothing fits. */
+	private String held(boolean block) {
+		if (minecraft == null || minecraft.player == null) return null;
+		for (var stack : List.of(minecraft.player.getMainHandItem(), minecraft.player.getOffhandItem())) {
+			if (stack.isEmpty()) continue;
+			if (!block) return IdCompletion.shortId(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+			if (stack.getItem() instanceof net.minecraft.world.item.BlockItem bi) return IdCompletion.shortId(BuiltInRegistries.BLOCK.getKey(bi.getBlock()).toString());
+		}
+		return null;
+	}
+
+	/** "hand" fills the box with what you hold; shown when that's different from the box. */
+	private void handButton(int x, int y, String current, boolean block, Consumer<String> set) {
+		String h = held(block);
+		if (h == null || h.equals(current)) return;
+		addRenderableWidget(Button.builder(Component.literal("hand"), b -> { set.accept(h); changed(); }).pos(x, y).size(30, 13).build());
 	}
 
 	private void changed() { dirty = true; rebuildWidgets(); }
@@ -349,17 +416,30 @@ public final class LogicScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
 		super.extractRenderState(g, mouseX, mouseY, delta);
+		g.pose().pushMatrix();
+		g.pose().translate(left, 0);
+		drawContent(g);
+		g.pose().popMatrix();
+	}
+
+	@Override
+	public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+		super.extractBackground(g, mouseX, mouseY, delta);
+		if (left > 0) g.fill(left - 6, 0, left + cw + 6, height, 0x50000000);   // the column, on wide screens
+	}
+
+	private void drawContent(GuiGraphicsExtractor g) {
 		int x0 = rightX();
 		g.text(font, "Logic Block", 6, 9, AQUA);
 		String out = "Output " + snapshot.output() + "   by " + open.owner() + "   " + open.x() + " " + open.y() + " " + open.z();
-		g.text(font, font.plainSubstrByWidth(out, width - 244), 76, 9, GRAY);
+		g.text(font, font.plainSubstrByWidth(out, cw - 244), 76, 9, GRAY);
 		if (!alsoTab) g.text(font, "Otherwise", 6, height - 19, WHITE);
 		List<Draft.Rule> list = list();
 		if (list.isEmpty()) {
 			String hint = alsoTab
 				? "When rules: every true one runs, every check, alongside If/Else. For moving items. \"+ When\" adds one."
 				: "If/Else rules: the first true one sets the output, \"Otherwise\" covers the rest. \"+ Rule\" adds one.";
-			drawWrapped(g, hint, x0, 30, width - x0 - 8, GRAY);
+			drawWrapped(g, hint, x0, 30, cw - x0 - 8, GRAY);
 		} else {
 			Draft.Rule rule = list.get(sel());
 			boolean now = alsoTab ? allTrue(rule) : draftMatched() == sel();
@@ -371,8 +451,15 @@ public final class LogicScreen extends Screen {
 				if (c.kind == Condition.Kind.PLAYERS) g.text(font, "within", x0 + 50, y + 5, GRAY);
 				Check k = check(c);
 				String line = "now: " + k.reading() + (k.ok() ? "  (true)" : "  (false)");
-				int lx = x0 + ((c.kind == Condition.Kind.BLOCK || c.kind == Condition.Kind.ITEMS) && open.editable() && suggestion(c) != null ? 80 : 50);
-				g.text(font, font.plainSubstrByWidth(line, width - lx - 6), lx, y + 23, k.ok() ? GREEN : RED);
+				int lx = x0 + 50;
+				if ((c.kind == Condition.Kind.BLOCK || c.kind == Condition.Kind.ITEMS) && open.editable()) {
+					int bx = x0 + 48;
+					if (suggestion(c) != null) bx += 30;
+					String h = held(c.kind == Condition.Kind.BLOCK);
+					if (h != null && !h.equals(c.id)) bx += 32;
+					lx = Math.max(lx, bx + 2);
+				}
+				g.text(font, font.plainSubstrByWidth(line, cw - lx - 6), lx, y + 23, k.ok() ? GREEN : RED);
 				y += ROW;
 			}
 			y += 24;
@@ -392,19 +479,24 @@ public final class LogicScreen extends Screen {
 				g.text(font, "from", x, y + 5, GRAY);
 				x += font.width("from") + 4 + 42;
 				g.text(font, "to", x, y + 5, GRAY);
-				int lx = x0 + 34 + (open.editable() && moveSuggestion(move) != null ? 30 : 0);
-				g.text(font, font.plainSubstrByWidth("now: " + moveReading(move), width - lx - 6), lx, y + 23, moveReady(move) ? GREEN : RED);
+				int lx = x0 + 34;
+				if (open.editable()) {
+					if (moveSuggestion(move) != null) lx += 30;
+					String h = held(false);
+					if (h != null && !h.equals(move.id)) lx += 32;
+				}
+				g.text(font, font.plainSubstrByWidth("now: " + moveReading(move), cw - lx - 6), lx, y + 23, moveReady(move) ? GREEN : RED);
 				y += ROW;
 			}
 			y += 22;
 			if (!rule.moves.isEmpty()) {
-				y = drawWrapped(g, "Moves one item every 8 ticks (hopper speed), between containers touching this block.", x0, y, width - x0 - 6, GRAY);
+				y = drawWrapped(g, "Moves one item every 8 ticks (hopper speed), between containers touching this block.", x0, y, cw - x0 - 6, GRAY);
 			}
 			String warn = dustWarning(rule);
-			if (warn != null) { g.text(font, font.plainSubstrByWidth(warn, width - x0 - 6), x0, y, GOLD); y += 12; }
+			if (warn != null) { g.text(font, font.plainSubstrByWidth(warn, cw - x0 - 6), x0, y, GOLD); y += 12; }
 		}
 		int sx = Math.max(x0, 140);
-		if (!status.isEmpty()) g.text(font, font.plainSubstrByWidth(status, width - sx - 6), sx, height - 19, statusColor);
+		if (!status.isEmpty()) g.text(font, font.plainSubstrByWidth(status, cw - sx - 6), sx, height - 19, statusColor);
 		else if (dirty) g.text(font, "Not saved yet", sx, height - 19, GOLD);
 	}
 

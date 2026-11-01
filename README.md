@@ -44,7 +44,8 @@ Logic Block items keep their rules: v1 programs are read and upgraded automatica
 4. **Right-click** it to open the editor (sneak + right-click with a block places against it instead).
 5. **+ Rule**, then click the buttons to cycle through choices and type ids and numbers. Each condition shows
    `now: <what the block sees> (true/false)`; the rule that's true right now is green. **use** fills in the block or
-   item that's actually there.
+   item that's actually there, **hand** the one you're holding. While typing an id, the rest of it shows in grey:
+   **Tab** accepts it.
 6. **Save**. The block's output changes within a tick or two.
 
 **Things to build:** an item sorter that also sorts tools and never jams on a full chest: one Logic Block per item
