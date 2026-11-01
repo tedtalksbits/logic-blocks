@@ -7,8 +7,25 @@ import java.util.*;
  * evaluate the rules being edited (with the same Engine) and show live true/false before saving.
  */
 public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>> containers, int[] playerDistances,
-                       int output, int matched) implements Engine.Inputs {
+                       int output, int matched, int[] counters, int[] timersLeft, int timerDone) implements Engine.Inputs {
     public static final int MAX_ITEM_TYPES = 64, MAX_PLAYERS = 64;
+
+    /** Without memory: counters 0, no timers running. */
+    public Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>> containers, int[] playerDistances, int output, int matched) {
+        this(blocks, signals, containers, playerDistances, output, matched, new int[Condition.COUNTERS], new int[Condition.TIMERS], 0);
+    }
+
+    /** This snapshot with the block's memory (counters, timers) as of {@code tick}. */
+    public Snapshot withMemory(Engine.State state, long tick) {
+        int[] c = state.counters.clone(), t = new int[Condition.TIMERS];
+        Engine.Inputs mem = state.over(this, tick);
+        for (int i = 0; i < t.length; i++) t[i] = mem.timerLeft(i);
+        return new Snapshot(blocks, signals, containers, playerDistances, output, matched, c, t, state.timerDone);
+    }
+
+    @Override public int counter(int i) { return counters[i]; }
+    @Override public int timerLeft(int i) { return timersLeft[i]; }
+    @Override public boolean timerDone(int i) { return (timerDone >> i & 1) != 0; }
 
     /** Player distances are stored in tenths of a block. */
     public static int tenths(double distance) { return (int) Math.ceil(distance * 10 - 1e-9); }
@@ -49,7 +66,10 @@ public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>
         }
         out.varInt(playerDistances.length);
         for (int d : playerDistances) out.varInt(d);
-        return out.varInt(output).varInt(matched + 1).bytes();
+        out.varInt(output).varInt(matched + 1);
+        for (int c : counters) out.varInt(c);
+        for (int t : timersLeft) out.varInt(t);
+        return out.varInt(timerDone).bytes();
     }
 
     public static Snapshot decode(Wire.Reader in) {
@@ -72,7 +92,10 @@ public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>
         int[] distances = new int[p];
         for (int i = 0; i < p; i++) distances[i] = in.varInt();
         int output = in.varInt(), matched = in.varInt() - 1;
-        return new Snapshot(blocks, signals, containers, distances, output, matched);
+        int[] counters = new int[Condition.COUNTERS], timers = new int[Condition.TIMERS];
+        for (int i = 0; i < counters.length; i++) counters[i] = in.varInt();
+        for (int i = 0; i < timers.length; i++) timers[i] = in.varInt();
+        return new Snapshot(blocks, signals, containers, distances, output, matched, counters, timers, in.varInt());
     }
 
     /** Keeps the {@link #MAX_ITEM_TYPES} most numerous kinds (live preview only; the server evaluates exact counts). */

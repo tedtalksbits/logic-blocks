@@ -17,7 +17,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   including the sorter build from `docs/SORTER.md` (four scenarios side by side, about 2 minutes).
 - `ci/` and `.github/workflows/ci.yml`: GitHub Actions (plugin, client, real-Paper self-test). See `docs/CI.md`.
 
-## Status (2026-10-25)
+## Status (2026-11-01)
 
 - v1 complete. Minecraft/Paper **26.3** (plugin also runs on 26.2: `api-version` is a minimum).
 - Plugin: 17 unit tests pass; the real-server self-test passes on Paper 26.2-130 and 26.3-211.
@@ -29,6 +29,15 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   real Paper: moves at exactly hopper speed, only the named item, furnace faces, protection event, turns on counts a
   held press once. The **editor** (tabs, move rows) is unit-tested and mocked but **not yet seen in a real game**
   (`docs/TEST_PLAN.md` tests 26-39).
+- **Counters and timers** (plugin 0.4.0, client 0.5.0, protocol 3, program format 3, node record format 2): 4
+  counters (A-D) and 4 timers (T1-T4) per block, private; their actions run once each time the rule becomes true;
+  every rule sees start-of-check values; they survive restarts, saving or breaking starts them over
+  (`docs/DESIGN.md`, "Counters and timers"). `/logic demo lock` (`Demos.lock`): a combination lock. Plugin 51 tests,
+  client 26; the real-Paper self-test (72 checks) presses the lock's buttons in right and wrong orders and checks a
+  delayed off, a clock and a counter across a chunk unload. Editor rows are compiled and unit-tested but **not yet
+  seen in a real game** (`docs/TEST_PLAN.md` tests 43-50).
+- Editor UX (client 0.4.0, released in v0.3.0): Tab completes ids, a **hand** button, centred column (`MAX_WIDTH`,
+  set to 1080 by the owner).
 - v2 sorter: one Logic Block per station (`/logic demo sorter`, `Demos.moveSorter`): no wrong items even at double
   feed speed. The v1 two-block redstone sorter stays as `/logic demo redstone-sorter`.
 - v1 item sorter build (`docs/SORTER.md`, pictures in `docs/images/` drawn by scripts, not game screenshots):
@@ -42,10 +51,9 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 
 ## Open items
 
-1. v2 step 3: timers ("every N ticks") and counters (private per block: add, subtract, reset, compare); showcase:
-   combination lock demo. Step 4: copy and paste rules between Logic Blocks, and presets. Later: shared variables,
-   wireless links.
-2. The owner's real-game check of the v2 editor (tests 26-39).
+1. The owner's real-game check of counters and timers (tests 43-50), then release v0.4.0.
+2. v2 step 4: copy and paste rules between Logic Blocks, and presets. Later: shared variables, wireless links,
+   optional item texture through a resource pack.
 3. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
 
 ## Decisions already made (don't reopen without asking)
@@ -70,6 +78,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | Middle-click a Logic Block picks a Logic Block, never a plain detector; creative gives one, Ctrl copies its rules | Owner asked for the fix |
 | No custom block or item: Paper can't add either; a Fabric server would mean everyone installs the mod | Owner checked; the side labels, pick fix and query exist because of this |
 | v2 order: engine + move items, then timers/counters, then copy/paste + presets | Owner agreed |
+| Counters/timers: 4 + 4 per block; survive restarts, reset on save and break; start-of-check values; their actions run once per rule becoming true (moves repeat) | Owner: "use the best default without compromise" |
 | Release tag = plugin version; the client keeps its own version; both jars in each release | Same as Blueprints (owner's call) |
 | Label look is a per-player client setting with an in-screen preview; no server-wide off switch | Owner: visual preferences belong to the player; players can't look around while in a menu |
 

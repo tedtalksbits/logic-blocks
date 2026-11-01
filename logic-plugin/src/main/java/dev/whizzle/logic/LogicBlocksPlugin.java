@@ -100,6 +100,8 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
                     sender.sendMessage(Component.text("/logic status", NamedTextColor.YELLOW));
                     sender.sendMessage(Component.text("/logic demo sorter|redstone-sorter [item ...]", NamedTextColor.YELLOW)
                         .append(Component.text("  build a working item sorter next to you", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("/logic demo lock", NamedTextColor.YELLOW)
+                        .append(Component.text("  build a combination lock (counters) next to you", NamedTextColor.GRAY)));
                 }
             }
         }
@@ -111,15 +113,33 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
      * /logic demo redstone-sorter [item ...]: the pure-redstone sorter (two per station). Both from docs/SORTER.md,
      * built beside the player, programmed, owned by them, with a stocked feeder chest.
      */
+    /** /logic demo lock: the combination lock (Demos.lock), 3 blocks south of the player, door facing them. */
+    private void demoLock(Player p) {
+        Block feet = p.getLocation().getBlock();
+        int x = feet.getX(), y = feet.getY(), z = feet.getZ() - 4;
+        Block blocked = Demos.lockBlocked(p.getWorld(), x, y, z);
+        if (blocked != null) {
+            p.sendMessage(Component.text("Not enough room: " + blocked.getType().getKey().getKey() + " at " + blocked.getX() + " " + blocked.getY() + " " + blocked.getZ()
+                + ". It needs a clear space 5 wide, 4 deep and 2 high, starting 3 blocks north of you.", NamedTextColor.RED));
+            return;
+        }
+        Demos.lock(manager, p.getWorld(), x, y, z, p.getUniqueId(), p.getName());
+        p.sendMessage(Component.text("Built a combination lock north of you. Press the buttons in the order on the signs (1, 2, 3) and the door opens"
+            + " for 3 seconds; a press out of order starts over. Its counter A remembers how far you are: right-click the Logic Block to watch it.", NamedTextColor.GREEN));
+    }
+
     private void demo(CommandSender sender, String[] args) {
         if (!sender.hasPermission("logicblocks.admin")) { sender.sendMessage(Component.text("You don't have permission.", NamedTextColor.RED)); return; }
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return; }
         String which = args.length < 2 ? "" : args[1].toLowerCase(java.util.Locale.ROOT);
+        if (which.equals("lock")) { demoLock(p); return; }
         if (!which.equals("sorter") && !which.equals("redstone-sorter")) {
             p.sendMessage(Component.text("/logic demo sorter [item ...]", NamedTextColor.YELLOW)
                 .append(Component.text("  one Logic Block per station, moving items", NamedTextColor.GRAY)));
             p.sendMessage(Component.text("/logic demo redstone-sorter [item ...]", NamedTextColor.YELLOW)
                 .append(Component.text("  pure redstone: two per station, locking hoppers", NamedTextColor.GRAY)));
+            p.sendMessage(Component.text("/logic demo lock", NamedTextColor.YELLOW)
+                .append(Component.text("  a combination lock: three buttons in the right order open a door", NamedTextColor.GRAY)));
             return;
         }
         boolean moving = which.equals("sorter");
@@ -155,7 +175,7 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) return sender.hasPermission("logicblocks.admin") ? List.of("info", "give", "status", "demo") : List.of("info");
         if (args.length == 2 && args[0].equalsIgnoreCase("give")) return null; // player names
-        if (args.length == 2 && args[0].equalsIgnoreCase("demo")) return List.of("sorter", "redstone-sorter");
+        if (args.length == 2 && args[0].equalsIgnoreCase("demo")) return List.of("sorter", "redstone-sorter", "lock");
         if (args.length >= 3 && args[0].equalsIgnoreCase("demo")) {
             String prefix = args[args.length - 1].toLowerCase(java.util.Locale.ROOT);
             return java.util.Arrays.stream(Material.values()).filter(m -> m.isItem() && !m.isAir() && !m.isLegacy())

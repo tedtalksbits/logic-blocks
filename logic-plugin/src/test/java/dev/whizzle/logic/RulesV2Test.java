@@ -45,7 +45,7 @@ class RulesV2Test {
         assertEquals(p, Program.decode(p.encode()));
         assertTrue(p.acts());
         assertFalse(Program.EMPTY.acts());
-        assertThrows(IllegalArgumentException.class, () -> Program.decode(new Wire.Writer().varInt(3).bytes()), "a newer format is refused, not misread");
+        assertThrows(IllegalArgumentException.class, () -> Program.decode(new Wire.Writer().varInt(Program.FORMAT + 1).bytes()), "a newer format is refused, not misread");
     }
 
     @Test void problemsNameTheRuleAndSayWhatToDo() {

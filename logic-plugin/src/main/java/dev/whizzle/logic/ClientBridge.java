@@ -24,7 +24,7 @@ import java.util.*;
  * client streams nothing but edits back, and every save is validated here.
  */
 public final class ClientBridge implements PluginMessageListener, Listener {
-    public static final int PROTOCOL = 2;   // 2: program format 2 (v2 rules)
+    public static final int PROTOCOL = 3;   // 2: program format 2 (v2 rules); 3: counters and timers (program format 3, snapshot memory)
     public static final String HELLO = "logicblocks:hello", WELCOME = "logicblocks:welcome", OPEN = "logicblocks:open",
         SAVE = "logicblocks:save", RESULT = "logicblocks:result", LIVE = "logicblocks:live", CLOSE = "logicblocks:close",
         QUERY = "logicblocks:query", IS = "logicblocks:is";
@@ -50,7 +50,7 @@ public final class ClientBridge implements PluginMessageListener, Listener {
     private final java.util.function.Function<LogicNode, dev.whizzle.logic.model.Snapshot> sensors;
 
     public ClientBridge(LogicManager manager, Outbox outbox, boolean anyoneEdits) {
-        this(manager, outbox, anyoneEdits, n -> new WorldInputs(n.block()).snapshot(n.output(), n.last == null ? -1 : n.last.matched()));
+        this(manager, outbox, anyoneEdits, n -> new WorldInputs(n.block()).snapshot(n.output(), n.last == null ? -1 : n.last.matched()).withMemory(n.state(), manager.now()));
     }
 
     /** {@code sensors} reads what a block sees; tests substitute it where the mock server lacks redstone. */

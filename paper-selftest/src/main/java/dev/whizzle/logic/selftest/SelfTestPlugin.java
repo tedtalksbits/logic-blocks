@@ -218,7 +218,10 @@ public final class SelfTestPlugin extends JavaPlugin {
         // 12. Turns on: a held input counts once.
         turnsOn();
 
-        // 13. Load: many busy blocks, timed.
+        // 13. Counters and timers: the combination lock demo, a delayed off, a clock, a counter across a chunk reload.
+        memory();
+
+        // 14. Load: many busy blocks, timed.
         steps.add(new Step("load: 400 blocks x 8 rules x 3 conditions", this::buildLoad, 4, this::measureLoad));
 
         run(0);
@@ -592,6 +595,107 @@ public final class SelfTestPlugin extends JavaPlugin {
             steps.add(new Step("turns on: release " + press + " -> still " + want, () -> at(t - 2, 0).setType(Material.AIR), 10,
                 () -> expect("wire", wire(t + 1, 0), want)));
         }
+    }
+
+    // ---- counters and timers ----
+
+    /** Presses a button like a player would (powered, then released {@code ticks} later). */
+    void press(Block button, int ticks) {
+        org.bukkit.block.data.type.Switch sw = (org.bukkit.block.data.type.Switch) button.getBlockData();
+        sw.setPowered(true);
+        button.setBlockData(sw, true);
+        getServer().getScheduler().runTaskLater(this, () -> {
+            org.bukkit.block.data.type.Switch up = (org.bukkit.block.data.type.Switch) button.getBlockData();
+            up.setPowered(false);
+            button.setBlockData(up, true);
+        }, ticks);
+    }
+
+    static boolean open(Block door) { return door.getBlockData() instanceof org.bukkit.block.data.Openable o && o.isOpen(); }
+
+    void memory() {
+        int lx = 660, dx = 680, cx = 690, px = 776;   // px: a chunk well away from the others, so it can unload
+        for (int c = 640 >> 4; c <= 700 >> 4; c++) for (int cz = -1; cz <= 0; cz++) w.setChunkForceLoaded(c, cz, true);
+        w.setChunkForceLoaded(px >> 4, 0, true);
+        Demos.Lock[] lock = new Demos.Lock[1];
+        steps.add(new Step("lock: built (/logic demo lock)", () -> {
+            for (int x = 650; x <= 700; x++) for (int z = -4; z <= 3; z++) {
+                w.getBlockAt(x, Y - 1, z).setType(Material.STONE);
+                for (int y = Y; y < Y + 3; y++) w.getBlockAt(x, y, z).setType(Material.AIR);
+            }
+            for (int x = px - 3; x <= px + 3; x++) { w.getBlockAt(x, Y - 1, 0).setType(Material.STONE); w.getBlockAt(x, Y, 0).setType(Material.AIR); }
+            if (Demos.lockBlocked(w, lx, Y, 0) != null) throw new IllegalStateException("lock space not clear");
+            lock[0] = Demos.lock(manager, w, lx, Y, 0, OWNER, "SelfTest");
+        }, 6, () -> open(lock[0].door()) ? "door open before any press" : null));
+        Supplier<Integer> a = () -> manager.at(lock[0].logic()).orElseThrow().state().counters[0];
+        steps.add(new Step("lock: press 1 -> A = 1", () -> press(lock[0].buttons().get(0), 20), 30, () -> expect("A", a.get(), 1)));
+        steps.add(new Step("lock: press 2 -> A = 2, still shut", () -> press(lock[0].buttons().get(1), 20), 30,
+            () -> open(lock[0].door()) ? "door open early" : expect("A", a.get(), 2)));
+        steps.add(new Step("lock: press 3 -> door opens, A back to 0", () -> press(lock[0].buttons().get(2), 20), 10,
+            () -> !open(lock[0].door()) ? "door shut" : expect("A", a.get(), 0)));
+        steps.add(new Step("lock: still open 2 seconds later", () -> { }, 40, () -> open(lock[0].door()) ? null : "door shut early"));
+        steps.add(new Step("lock: shut after 3 seconds", () -> { }, 30, () -> open(lock[0].door()) ? "door still open" : null));
+        steps.add(new Step("lock: wrong order (1, 3, 2) stays shut", () -> {
+            press(lock[0].buttons().get(0), 20);
+            getServer().getScheduler().runTaskLater(this, () -> press(lock[0].buttons().get(2), 20), 30);
+            getServer().getScheduler().runTaskLater(this, () -> press(lock[0].buttons().get(1), 20), 60);
+        }, 100, () -> open(lock[0].door()) ? "door opened" : expect("A", a.get(), 0)));
+        steps.add(new Step("lock: right order after a wrong one opens", () -> {
+            for (int i = 0; i < 3; i++) { int b = i; getServer().getScheduler().runTaskLater(this, () -> press(lock[0].buttons().get(b), 20), 1 + 30L * i); }
+        }, 70, () -> open(lock[0].door()) ? null : "door shut"));
+
+        // Delayed off: on while the input is, and 40 ticks after (a timer started when the input goes off).
+        steps.add(new Step("delayed off: input on -> 15", () -> {
+            node(dx, 0, Demos.delayedOff(40));
+            repeaterInto(dx - 1, 0, BlockFace.WEST);
+            at(dx + 1, 0).setType(Material.REDSTONE_WIRE);
+            at(dx - 2, 0).setType(Material.REDSTONE_BLOCK);
+        }, 10, () -> expect("wire", wire(dx + 1, 0), 15)));
+        steps.add(new Step("delayed off: input off, still on 30 ticks later", () -> at(dx - 2, 0).setType(Material.AIR), 30,
+            () -> expect("wire", wire(dx + 1, 0), 15)));
+        steps.add(new Step("delayed off: off by 50 ticks", () -> { }, 20, () -> expect("wire", wire(dx + 1, 0), 0)));
+
+        // Clock: a 4-tick pulse every 20 ticks from a timer that restarts itself.
+        List<Long> rises = new ArrayList<>();
+        steps.add(new Step("clock: a pulse every 20 ticks", () -> {
+            node(cx, 0, Demos.clock(20, 4));
+            at(cx + 1, 0).setType(Material.REDSTONE_WIRE);
+            int[] last = {0};
+            for (int t = 1; t <= 220; t++) getServer().getScheduler().runTaskLater(this, () -> {
+                int now = wire(cx + 1, 0);
+                if (now > 0 && last[0] == 0) rises.add(manager.now());
+                last[0] = now;
+            }, t);
+        }, 225, () -> {
+            report.add("INFO clock rises at " + rises);
+            if (rises.size() < 9 || rises.size() > 12) return rises.size() + " pulses in 220 ticks";
+            for (int i = 1; i < rises.size(); i++) if (rises.get(i) - rises.get(i - 1) != 20) return "gap " + (rises.get(i) - rises.get(i - 1));
+            return null;
+        }));
+
+        // A counter keeps its value when its chunk unloads and loads again.
+        Program twoPresses = new Program(List.of(rule(Action.set(15), Condition.counter("a", Op.GE, 2))), Action.set(0),
+            List.of(new Program.Rule(List.of(Condition.change(Side.WEST, true)), Action.add("a", 1))));
+        steps.add(new Step("counter persistence: one press", () -> {
+            node(px, 0, twoPresses);
+            repeaterInto(px - 1, 0, BlockFace.WEST);
+            at(px + 1, 0).setType(Material.REDSTONE_WIRE);
+            getServer().getScheduler().runTaskLater(this, () -> at(px - 2, 0).setType(Material.REDSTONE_BLOCK), 6);
+            getServer().getScheduler().runTaskLater(this, () -> at(px - 2, 0).setType(Material.AIR), 16);
+        }, 24, () -> expect("A", manager.at(at(px, 0)).orElseThrow().state().counters[0], 1)));
+        steps.add(new Step("counter persistence: release chunk", () -> w.setChunkForceLoaded(px >> 4, 0, false), 2, () -> null));
+        steps.add(new Step("counter persistence: chunk unloaded", () -> {
+            if (!w.unloadChunk(px >> 4, 0, true)) report.add("INFO chunk refused to unload");
+        }, 4, () -> w.isChunkLoaded(px >> 4, 0) ? "chunk still loaded" : null));
+        steps.add(new Step("counter persistence: reloaded, A still 1, output 0", () -> w.setChunkForceLoaded(px >> 4, 0, true), 8, () -> {
+            LogicNode n = manager.at(at(px, 0)).orElse(null);
+            if (n == null) return "not registered after reload";
+            return n.state().counters[0] != 1 ? "A = " + n.state().counters[0] : expect("wire", wire(px + 1, 0), 0);
+        }));
+        steps.add(new Step("counter persistence: second press -> 15", () -> {
+            at(px - 2, 0).setType(Material.REDSTONE_BLOCK);
+            getServer().getScheduler().runTaskLater(this, () -> at(px - 2, 0).setType(Material.AIR), 10);
+        }, 16, () -> expect("wire", wire(px + 1, 0), 15)));
     }
 
     void buildLoad() {

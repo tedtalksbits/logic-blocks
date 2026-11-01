@@ -69,6 +69,19 @@ rules, and to judge how it feels.
 | 41 | **hand:** hold a diamond, open the editor, look at a Move row | A **hand** button next to the id (and next to **use**, if shown). Click it: the id becomes `diamond` and **hand** goes away. In a Block condition it fills the block's id (holding cobblestone: `cobblestone`); holding a non-block item, no **hand** there. |
 | 42 | **Wide screen:** on your ultrawide, open the editor, then `/logicblocks` | The editor sits in a centred column at most 640 GUI pixels wide, on a darker panel, with Save and Close at its right edge. The label settings are centred the same way. On a normal screen nothing changes. |
 
+## Tests: counters and timers (plugin 0.4.0, client 0.5.0)
+
+| # | Do this | Expect |
+|---|---|---|
+| 43 | `/logic demo lock`, then press the buttons in the order on the signs (1, 2, 3) | The iron door opens for 3 seconds, then shuts. |
+| 44 | Right-click the lock's Logic Block, press button 1, then button 2 | The editor's When rules go green as you press; a **Set A** row shows `now: A = 1`, then `A = 2`. Then press 3: the door opens. |
+| 45 | Press 1, 3, 2 | The door stays shut (A goes back to 0). Then 1, 2, 3 opens it. |
+| 46 | **Counting:** new block, When: **Signal** West `>` 0 -> **Add** 1 to A; If/Else: **Counter** A `>=` 3 -> Output 15. Lever (or button) through a repeater into the west side | Each press adds exactly 1 (holding a lever doesn't keep counting); the output comes on at the third. |
+| 47 | **Timer door:** If/Else 1: **Change** West turns on -> Output 15, **+ Action** -> **Start** T1 for `5` seconds. If/Else 2: **Timer** T1 is done -> Output 0. Otherwise **Keep**. A button into the west side, a door on the east | A press opens the door; it shuts 5 seconds later. While open, the Start row shows `now: T1 running, ...s left`. |
+| 48 | **Clock:** When: **Timer** T1 is not running -> **Start** T1 for `1` seconds. If/Else: **Timer** T1 is done -> **Pulse** 15 for 4. Otherwise **Keep**. A lamp next to it | The lamp blinks once a second. |
+| 49 | Leave test 46's block at A = 2, restart the server | Still A = 2 (one more press turns it on). Save the rules again: A is back to 0. Break and place it: A is 0. |
+| 50 | Old client (0.4.0) on the new server | Right-clicking says the mod needs updating. |
+
 ## Please report
 
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the
@@ -83,6 +96,8 @@ recipe cost.
 3. **Only the owner (and operators) can edit.** Set `editing: anyone` in `config.yml` to open it up.
 4. **Sides are compass directions.** The mod now labels them (tests 15-20). Players without the mod still use F3.
 5. **Moving items is hopper speed:** one item per 8 ticks per Logic Block, only between touching containers.
+6. **Counters and timers are per block and start over when you save or break it.** Their actions run once each time
+   the rule becomes true; changes show at the next check (2 ticks). See README, "Counters and timers".
    Timers, counters, copy and paste, and presets come next; variables and wireless links later.
-6. **Side labels are on by default, toggled with N.** Only players with the mod see them, and only on the block
+7. **Side labels are on by default, toggled with N.** Only players with the mod see them, and only on the block
    under the crosshair. Their look is each player's own setting (`/logicblocks`); there is no server-wide switch.

@@ -13,10 +13,14 @@ import java.util.Objects;
  *   <li>CHANGE: the signal on {@code side} (or ANY: the strongest) has just turned on ({@code number} 1: it was 0 at
  *       the previous check and isn't now) or off ({@code number} 0). True for one check only, so a held button
  *       counts once.</li>
+ *   <li>COUNTER: this block's counter {@code id} ("a" to "d") compared with {@code number}.</li>
+ *   <li>TIMER: this block's timer {@code id} ("t1" to "t4") {@code is} / {@code is not} done ({@code number} 0: it ran
+ *       out at this check, true for one check only) or running ({@code number} 1).</li>
  * </ul>
+ * Counters and timers are the block's own memory: no other block can see them.
  */
 public record Condition(Kind kind, Side side, Op op, String id, int number, int number2) {
-    public enum Kind { BLOCK, SIGNAL, ITEMS, PLAYERS, CHANGE }   // append only: stored by ordinal
+    public enum Kind { BLOCK, SIGNAL, ITEMS, PLAYERS, CHANGE, COUNTER, TIMER }   // append only: stored by ordinal
 
     public enum Op {
         IS("is"), IS_NOT("is not"), EQ("="), NE("!="), LT("<"), LE("<="), GT(">"), GE(">=");
@@ -36,6 +40,22 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
     }
 
     public static final int MAX_NUMBER = 100_000, MAX_RADIUS = 16, MAX_ID = 64;
+    /** Each block has counters A to D and timers T1 to T4. */
+    public static final int COUNTERS = 4, TIMERS = 4;
+    public static final int DONE = 0, RUNNING = 1;
+
+    /** "a" to "d" -> 0 to 3; -1 for anything else. */
+    public static int counterIndex(String id) {
+        return id.length() == 1 && id.charAt(0) >= 'a' && id.charAt(0) < 'a' + COUNTERS ? id.charAt(0) - 'a' : -1;
+    }
+    /** "t1" to "t4" -> 0 to 3; -1 for anything else. */
+    public static int timerIndex(String id) {
+        return id.length() == 2 && id.charAt(0) == 't' && id.charAt(1) >= '1' && id.charAt(1) < '1' + TIMERS ? id.charAt(1) - '1' : -1;
+    }
+    public static String counterId(int i) { return String.valueOf((char) ('a' + i)); }
+    public static String timerId(int i) { return "t" + (i + 1); }
+    /** "a" -> "A", "t1" -> "T1": how players see them. */
+    public static String memoryLabel(String id) { return id.toUpperCase(Locale.ROOT); }
 
     public Condition {
         Objects.requireNonNull(kind); Objects.requireNonNull(side); Objects.requireNonNull(op);
@@ -48,6 +68,8 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case ITEMS -> number2 = 0;
             case PLAYERS -> { side = Side.ANY; id = ""; }
             case CHANGE -> { op = Op.EQ; id = ""; number = number == 0 ? 0 : 1; number2 = 0; }
+            case COUNTER -> { side = Side.ANY; number2 = 0; }
+            case TIMER -> { side = Side.ANY; number = number == DONE ? DONE : RUNNING; number2 = 0; }
         }
     }
 
@@ -58,6 +80,10 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
     /** The signal on {@code side} turns on ({@code on}) or off. */
     public static Condition change(Side side, boolean on) { return new Condition(Kind.CHANGE, side, Op.EQ, "", on ? 1 : 0, 0); }
     public boolean turnsOn() { return kind == Kind.CHANGE && number == 1; }
+    /** Counter {@code counter} ("a" to "d") compared with {@code value}. */
+    public static Condition counter(String counter, Op op, int value) { return new Condition(Kind.COUNTER, Side.ANY, op, counter, value, 0); }
+    /** Timer {@code timer} ("t1" to "t4") is (or with {@code is} false, isn't) done / running. */
+    public static Condition timer(String timer, boolean is, boolean running) { return new Condition(Kind.TIMER, Side.ANY, is ? Op.IS : Op.IS_NOT, timer, running ? RUNNING : DONE, 0); }
 
     /** Null when valid, otherwise what's wrong, in words a player understands. */
     public String problem() {
@@ -83,6 +109,15 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
                 if (number < 0 || number > 100) return "Player count is 0 to 100";
             }
             case CHANGE -> { }
+            case COUNTER -> {
+                if (counterIndex(id) < 0) return "Pick a counter, A to D";
+                if (!op.numeric()) return "Counter checks compare a number";
+                if (number < 0 || number > MAX_NUMBER) return "A counter is 0 to " + MAX_NUMBER;
+            }
+            case TIMER -> {
+                if (timerIndex(id) < 0) return "Pick a timer, T1 to T4";
+                if (op.numeric()) return "Timer checks use \"is\" or \"is not\"";
+            }
         }
         return null;
     }
@@ -97,6 +132,8 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case ITEMS -> (id.equals("*") ? "items" : id) + " " + side.label().toLowerCase(Locale.ROOT) + " " + op.symbol + " " + number;
             case PLAYERS -> "players within " + number2 + " " + op.symbol + " " + number;
             case CHANGE -> "signal " + (side == Side.ANY ? "any side" : side.label().toLowerCase(Locale.ROOT)) + (number == 1 ? " turns on" : " turns off");
+            case COUNTER -> "counter " + memoryLabel(id) + " " + op.symbol + " " + number;
+            case TIMER -> memoryLabel(id) + " " + op.symbol + (number == RUNNING ? " running" : " done");
         };
     }
 

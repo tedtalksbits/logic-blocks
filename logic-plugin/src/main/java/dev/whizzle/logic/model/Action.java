@@ -16,12 +16,18 @@ import java.util.Objects;
  */
 public record Action(Kind kind, int strength, int ticks, String id, Side from, Side to) {
     public enum Kind {   // append only: stored by ordinal
-        SET, PULSE, TOGGLE, KEEP, MOVE;
-        /** Decides the redstone output (as opposed to acting on the world). */
-        public boolean output() { return this != MOVE; }
+        SET, PULSE, TOGGLE, KEEP, MOVE, ADD, SUBTRACT, SET_COUNTER, START, STOP;
+        /** Decides the redstone output (as opposed to acting on the world or the block's memory). */
+        public boolean output() { return this == SET || this == PULSE || this == TOGGLE || this == KEEP; }
+        /** Changes the block's own counters or timers. Runs once each time its rule becomes true. */
+        public boolean memory() { return this == ADD || this == SUBTRACT || this == SET_COUNTER || this == START || this == STOP; }
+        /** Changes a counter (its id is "a" to "d"; the amount or value is in {@code strength}). */
+        public boolean counter() { return this == ADD || this == SUBTRACT || this == SET_COUNTER; }
     }
 
     public static final int MAX_TICKS = 1200;
+    /** Longest timer: one hour. */
+    public static final int MAX_TIMER_TICKS = 72_000;
 
     public Action {
         Objects.requireNonNull(kind);
@@ -29,9 +35,10 @@ public record Action(Kind kind, int strength, int ticks, String id, Side from, S
         if (id.startsWith("minecraft:")) id = id.substring("minecraft:".length());
         // Fields a kind doesn't use are cleared, so equal actions compare and encode equal.
         if (kind == Kind.MOVE) { strength = 0; ticks = 0; }
-        else { id = ""; from = Side.ANY; to = Side.ANY; }
-        if (kind == Kind.KEEP) strength = 0;
-        if (kind != Kind.PULSE) ticks = 0;
+        else { from = Side.ANY; to = Side.ANY; }
+        if (!kind.memory() && kind != Kind.MOVE) id = "";
+        if (kind == Kind.KEEP || kind == Kind.START || kind == Kind.STOP) strength = 0;
+        if (kind != Kind.PULSE && kind != Kind.START) ticks = 0;
         Objects.requireNonNull(from); Objects.requireNonNull(to);
     }
 
@@ -42,12 +49,36 @@ public record Action(Kind kind, int strength, int ticks, String id, Side from, S
     public static Action toggle(int strength) { return new Action(Kind.TOGGLE, strength, 0); }
     public static Action keep() { return new Action(Kind.KEEP, 0, 0); }
     public static Action move(String id, Side from, Side to) { return new Action(Kind.MOVE, 0, 0, id, from, to); }
+    /** Adds {@code amount} to counter {@code counter} ("a" to "d"). */
+    public static Action add(String counter, int amount) { return new Action(Kind.ADD, amount, 0, counter, Side.ANY, Side.ANY); }
+    public static Action subtract(String counter, int amount) { return new Action(Kind.SUBTRACT, amount, 0, counter, Side.ANY, Side.ANY); }
+    public static Action setCounter(String counter, int value) { return new Action(Kind.SET_COUNTER, value, 0, counter, Side.ANY, Side.ANY); }
+    /** (Re)starts timer {@code timer} ("t1" to "t4") to run out after {@code ticks}. */
+    public static Action start(String timer, int ticks) { return new Action(Kind.START, 0, ticks, timer, Side.ANY, Side.ANY); }
+    public static Action stop(String timer) { return new Action(Kind.STOP, 0, 0, timer, Side.ANY, Side.ANY); }
+
+    /** "5s", "0.5s", "1.25s": a tick count as seconds. */
+    public static String seconds(int ticks) {
+        String s = java.math.BigDecimal.valueOf(ticks).divide(java.math.BigDecimal.valueOf(20)).stripTrailingZeros().toPlainString();
+        return s + "s";
+    }
 
     public String problem() {
         if (kind == Kind.MOVE) {
             if (from == Side.ANY || to == Side.ANY) return "Pick the sides to move from and to";
             if (from == to) return "Move from one side to a different side";
             if (!id.equals("*") && !Condition.validId(id)) return "Name an item to move, like coal, or * for any item";
+            return null;
+        }
+        if (kind.counter()) {
+            if (Condition.counterIndex(id) < 0) return "Pick a counter, A to D";
+            if (kind == Kind.SET_COUNTER ? strength < 0 || strength > Condition.MAX_NUMBER : strength < 1 || strength > Condition.MAX_NUMBER)
+                return (kind == Kind.SET_COUNTER ? "A counter is 0 to " : "Add or subtract 1 to ") + Condition.MAX_NUMBER;
+            return null;
+        }
+        if (kind == Kind.START || kind == Kind.STOP) {
+            if (Condition.timerIndex(id) < 0) return "Pick a timer, T1 to T4";
+            if (kind == Kind.START && (ticks < 1 || ticks > MAX_TIMER_TICKS)) return "A timer runs 0.05 to " + MAX_TIMER_TICKS / 20 + " seconds";
             return null;
         }
         if (kind != Kind.KEEP && (strength < 0 || strength > 15)) return "Output strength is 0 to 15";
@@ -62,10 +93,15 @@ public record Action(Kind kind, int strength, int ticks, String id, Side from, S
             case TOGGLE -> "toggle " + strength;
             case KEEP -> "keep output";
             case MOVE -> "move " + (id.equals("*") ? "any item" : id) + " from " + from.label().toLowerCase(Locale.ROOT) + " to " + to.label().toLowerCase(Locale.ROOT);
+            case ADD -> "add " + strength + " to " + Condition.memoryLabel(id);
+            case SUBTRACT -> "subtract " + strength + " from " + Condition.memoryLabel(id);
+            case SET_COUNTER -> "set " + Condition.memoryLabel(id) + " to " + strength;
+            case START -> "start " + Condition.memoryLabel(id) + " for " + seconds(ticks);
+            case STOP -> "stop " + Condition.memoryLabel(id);
         };
     }
 
-    /** Format 2: every field. */
+    /** Formats 2 and 3: every field. */
     void write(Wire.Writer out) {
         out.varInt(kind.ordinal()).varInt(strength).varInt(ticks).utf(id).varInt(from.ordinal()).varInt(to.ordinal());
     }

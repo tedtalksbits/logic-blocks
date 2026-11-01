@@ -144,6 +144,101 @@ public final class Demos {
             new Program.Rule(List.of(Condition.signal(Side.UP, Op.GT, 0)), Action.set(0))), Action.set(15));
     }
 
+    // ---- counters and timers ----
+
+    /** What the lock demo was built from: the Logic Block, the buttons in the order to press them, and the door. */
+    public record Lock(Block logic, List<Block> buttons, Block door) {}
+
+    /**
+     * The combination lock's program: buttons on the west, north and east sides, pressed in that order, open the door
+     * on the south side for 3 seconds. Counter A remembers how far along the combination you are; a press out of
+     * order puts it back to 0.
+     */
+    public static Program lockProgram() {
+        Program.Rule open = new Program.Rule(List.of(Condition.counter("a", Op.EQ, 3)), List.of(Action.pulse(15, 60), Action.setCounter("a", 0)));
+        return new Program(List.of(open), Action.keep(), List.of(
+            new Program.Rule(List.of(Condition.change(Side.WEST, true)), Action.setCounter("a", 1)),
+            new Program.Rule(List.of(Condition.change(Side.NORTH, true), Condition.counter("a", Op.EQ, 1)), Action.setCounter("a", 2)),
+            new Program.Rule(List.of(Condition.change(Side.EAST, true), Condition.counter("a", Op.EQ, 2)), Action.setCounter("a", 3)),
+            new Program.Rule(List.of(Condition.change(Side.NORTH, true), Condition.counter("a", Op.NE, 1)), Action.setCounter("a", 0)),
+            new Program.Rule(List.of(Condition.change(Side.EAST, true), Condition.counter("a", Op.NE, 2)), Action.setCounter("a", 0))));
+    }
+
+    /** Stays on while the west signal is on and for {@code ticks} after it goes off (a timer started when it goes off). */
+    public static Program delayedOff(int ticks) {
+        return new Program(List.of(
+            new Program.Rule(List.of(Condition.signal(Side.WEST, Op.GT, 0)), Action.set(15)),
+            new Program.Rule(List.of(Condition.timer("t1", true, false)), Action.set(0))), Action.keep(),
+            List.of(new Program.Rule(List.of(Condition.signal(Side.WEST, Op.EQ, 0)), Action.start("t1", ticks))));
+    }
+
+    /** A clock: a {@code pulse}-tick pulse every {@code period} ticks, from a timer that restarts itself. */
+    public static Program clock(int period, int pulse) {
+        return new Program(List.of(new Program.Rule(List.of(Condition.timer("t1", true, false)), Action.pulse(15, pulse))), Action.keep(),
+            List.of(new Program.Rule(List.of(Condition.timer("t1", false, true)), Action.start("t1", period))));
+    }
+
+    /**
+     * The lock: the Logic Block at (x, y, z), a stone block on its west, north and east sides with a button on the far
+     * face and a numbered sign on top (1, 2, 3: the order), and an iron door on its south side.
+     */
+    public static List<Block> lockSpace(World w, int x, int y, int z) {
+        List<Block> space = new ArrayList<>();
+        space.add(w.getBlockAt(x, y, z));
+        for (BlockFace f : List.of(BlockFace.WEST, BlockFace.NORTH, BlockFace.EAST))
+            for (int d = 1; d <= 2; d++) {
+                space.add(w.getBlockAt(x + f.getModX() * d, y, z + f.getModZ() * d));
+                if (d == 1) space.add(w.getBlockAt(x + f.getModX(), y + 1, z + f.getModZ()));
+            }
+        space.add(w.getBlockAt(x, y, z + 1));
+        space.add(w.getBlockAt(x, y + 1, z + 1));
+        return space;
+    }
+
+    public static Block lockBlocked(World w, int x, int y, int z) {
+        for (Block b : lockSpace(w, x, y, z)) if (!b.getType().isAir() && !b.isReplaceable()) return b;
+        return null;
+    }
+
+    public static Lock lock(LogicManager manager, World w, int x, int y, int z, UUID owner, String ownerName) {
+        Block logic = w.getBlockAt(x, y, z);
+        logic.setType(LogicItem.BLOCK);
+        manager.create(logic, lockProgram(), owner, ownerName);
+        List<Block> buttons = new ArrayList<>();
+        int n = 1;
+        for (BlockFace f : List.of(BlockFace.WEST, BlockFace.NORTH, BlockFace.EAST)) {
+            Block stone = w.getBlockAt(x + f.getModX(), y, z + f.getModZ());
+            stone.setType(Material.STONE_BRICKS);
+            Block button = stone.getRelative(f);
+            button.setType(Material.STONE_BUTTON, false);
+            org.bukkit.block.data.type.Switch sw = (org.bukkit.block.data.type.Switch) button.getBlockData();
+            sw.setAttachedFace(org.bukkit.block.data.FaceAttachable.AttachedFace.WALL);
+            sw.setFacing(f);
+            button.setBlockData(sw, false);
+            buttons.add(button);
+            Block sign = stone.getRelative(BlockFace.UP);
+            sign.setType(Material.OAK_SIGN, false);
+            org.bukkit.block.data.type.Sign sd = (org.bukkit.block.data.type.Sign) sign.getBlockData();
+            sd.setRotation(f);
+            sign.setBlockData(sd, false);
+            org.bukkit.block.Sign state = (org.bukkit.block.Sign) sign.getState();
+            state.getSide(org.bukkit.block.sign.Side.FRONT).line(1, net.kyori.adventure.text.Component.text(String.valueOf(n++)));
+            state.update(true, false);
+        }
+        Block below = w.getBlockAt(x, y - 1, z + 1);
+        if (below.getType().isAir() || below.isReplaceable()) below.setType(Material.STONE_BRICKS);
+        Block door = w.getBlockAt(x, y, z + 1);
+        for (int half = 0; half < 2; half++) {
+            Block b = door.getRelative(0, half, 0);
+            b.setType(Material.IRON_DOOR, false);
+            org.bukkit.block.data.type.Door d = (org.bukkit.block.data.type.Door) b.getBlockData();
+            d.setHalf(half == 0 ? org.bukkit.block.data.Bisected.Half.BOTTOM : org.bukkit.block.data.Bisected.Half.TOP);
+            d.setFacing(BlockFace.NORTH);
+            b.setBlockData(d, false);
+        }
+        return new Lock(logic, buttons, door);
+    }
+
     /** A mix to watch it work: some of each sorted item between filler items. */
     public static void fillSample(Inventory inv, List<Material> sorted) {
         int slot = 0;

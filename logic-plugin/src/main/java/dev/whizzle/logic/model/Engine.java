@@ -16,6 +16,12 @@ public final class Engine {
         int items(Side side, String id);
         /** Players within {@code radius} blocks. */
         int players(int radius);
+        /** The block's own counter {@code i} (0 to 3 for A to D). */
+        default int counter(int i) { return 0; }
+        /** Ticks left on the block's timer {@code i} (0 to 3 for T1 to T4); 0 when it isn't running. */
+        default int timerLeft(int i) { return 0; }
+        /** Whether timer {@code i} ran out at this check. */
+        default boolean timerDone(int i) { return false; }
     }
 
     /**
@@ -80,6 +86,20 @@ public final class Engine {
                         reading = before < 0 ? "signal " + now : "signal " + before + " -> " + now;
                         ok = before >= 0 && (cond.turnsOn() ? before == 0 && now > 0 : before > 0 && now == 0);
                     }
+                    case COUNTER -> {
+                        int i = Condition.counterIndex(cond.id());
+                        int v = i < 0 ? 0 : in.counter(i);
+                        reading = Condition.memoryLabel(cond.id()) + " = " + v;
+                        ok = i >= 0 && cond.op().test(v, cond.number());
+                    }
+                    case TIMER -> {
+                        int i = Condition.timerIndex(cond.id());
+                        int left = i < 0 ? 0 : in.timerLeft(i);
+                        boolean done = i >= 0 && in.timerDone(i);
+                        reading = Condition.memoryLabel(cond.id()) + (done ? " done" : left > 0 ? " running, " + Action.seconds(left) + " left" : " not running");
+                        boolean state = cond.number() == Condition.RUNNING ? left > 0 : done;
+                        ok = i >= 0 && (cond.op() == Condition.Op.IS) == state;
+                    }
                     default -> throw new IllegalStateException();
                 }
                 truth[r][c] = ok;
@@ -98,16 +118,17 @@ public final class Engine {
     }
 
     /**
-     * The world actions this check runs, in order: the matched output rule's extra actions, then every true "also"
-     * rule's actions.
+     * The world actions (moves) this check runs, in order: the matched output rule's, then every true "also" rule's.
+     * Unlike counter and timer actions they repeat every check while their rule is true.
      */
     public static List<Action> worldActions(Program program, Evaluation e) {
         List<Action> out = new java.util.ArrayList<>();
         if (e.matched() >= 0) {
             List<Action> as = program.rules().get(e.matched()).actions();
-            for (int i = 1; i < as.size(); i++) out.add(as.get(i));
+            for (int i = 1; i < as.size(); i++) if (as.get(i).kind() == Action.Kind.MOVE) out.add(as.get(i));
         }
-        for (int r = 0; r < program.also().size(); r++) if (e.alsoTrue()[r]) out.addAll(program.also().get(r).actions());
+        for (int r = 0; r < program.also().size(); r++) if (e.alsoTrue()[r])
+            for (Action a : program.also().get(r).actions()) if (a.kind() == Action.Kind.MOVE) out.add(a);
         return out;
     }
 
@@ -116,6 +137,39 @@ public final class Engine {
         public int matched = -2, output;
         public long pulseUntil = -1;
         public boolean toggled;
+        /** Counters A to D. */
+        public final int[] counters = new int[Condition.COUNTERS];
+        /** Tick each timer runs out at, or -1 when it isn't running. */
+        public final long[] timerEnd = unset();
+        /** Timers that ran out at the last check (bit per timer): "done" is true for that one check. */
+        public int timerDone;
+        /** Which "when" rules were true at the last check (bit per rule), so their counter and timer actions run once per becoming true. */
+        public int alsoWas;
+        /** Set when counters, timers or alsoWas change, so the plugin knows to save. */
+        public boolean memoryChanged;
+
+        private static long[] unset() { long[] a = new long[Condition.TIMERS]; java.util.Arrays.fill(a, -1); return a; }
+
+        /** Back to a fresh block: output 0, toggles off, pulses stopped, counters 0, timers stopped. */
+        public void reset() {
+            matched = -2; output = 0; pulseUntil = -1; toggled = false;
+            java.util.Arrays.fill(counters, 0); java.util.Arrays.fill(timerEnd, -1); timerDone = 0; alsoWas = 0; memoryChanged = true;
+            java.util.Arrays.fill(signals, -1);
+        }
+
+        /** The block's memory as condition inputs at {@code tick}, over {@code world}. */
+        public Inputs over(Inputs world, long tick) {
+            State st = this;
+            return new Inputs() {
+                @Override public String block(Side side) { return world.block(side); }
+                @Override public int signal(Side side) { return world.signal(side); }
+                @Override public int items(Side side, String id) { return world.items(side, id); }
+                @Override public int players(int radius) { return world.players(radius); }
+                @Override public int counter(int i) { return st.counters[i]; }
+                @Override public int timerLeft(int i) { return st.timerEnd[i] < 0 ? 0 : (int) Math.max(1, st.timerEnd[i] - tick); }
+                @Override public boolean timerDone(int i) { return (st.timerDone >> i & 1) != 0; }
+            };
+        }
         /** Signals the last check saw, for turns-on/off (not stored: after a reload nothing "turns on" at once). */
         public final int[] signals = unknownSignals();
         /** Tick before which this block may not move another item (hopper speed). */
@@ -127,6 +181,50 @@ public final class Engine {
         }
     }
 
+    /**
+     * One full check at {@code tick}: timers that ran out become "done" for this check, every condition is evaluated
+     * (all of them see the counters and timers as they were at the start of the check), then counter and timer
+     * actions run (the matched If/Else rule's when it has just started matching, each "when" rule's when it has just
+     * become true; If/Else first, then the "when" rules from the top, in order), then the output is updated. Moves are
+     * left to the caller ({@link #worldActions}).
+     */
+    public static Evaluation run(Program program, Inputs world, State state, long tick) {
+        int done = 0;
+        for (int i = 0; i < state.timerEnd.length; i++)
+            if (state.timerEnd[i] >= 0 && tick >= state.timerEnd[i]) { state.timerEnd[i] = -1; done |= 1 << i; }
+        if (done != 0 || state.timerDone != 0) state.memoryChanged = true;
+        state.timerDone = done;
+        Evaluation e = evaluate(program, state.over(world, tick), state.signals);
+        remember(state.signals, e);
+        if (e.matched() >= 0 && e.matched() != state.matched) {
+            List<Action> as = program.rules().get(e.matched()).actions();
+            for (int i = 1; i < as.size(); i++) applyMemory(as.get(i), state, tick);
+        }
+        int now = 0;
+        for (int r = 0; r < program.also().size(); r++) {
+            if (!e.alsoTrue()[r]) continue;
+            now |= 1 << r;
+            if ((state.alsoWas >> r & 1) == 0) for (Action a : program.also().get(r).actions()) applyMemory(a, state, tick);
+        }
+        if (now != state.alsoWas) { state.alsoWas = now; state.memoryChanged = true; }
+        step(program, state, e.matched(), tick);
+        return e;
+    }
+
+    private static void applyMemory(Action a, State state, long tick) {
+        if (!a.kind().memory()) return;
+        int c = Condition.counterIndex(a.id()), t = Condition.timerIndex(a.id());
+        switch (a.kind()) {
+            case ADD -> { if (c >= 0) state.counters[c] = Math.min(Condition.MAX_NUMBER, state.counters[c] + a.strength()); }
+            case SUBTRACT -> { if (c >= 0) state.counters[c] = Math.max(0, state.counters[c] - a.strength()); }
+            case SET_COUNTER -> { if (c >= 0) state.counters[c] = Math.clamp(a.strength(), 0, Condition.MAX_NUMBER); }
+            case START -> { if (t >= 0) state.timerEnd[t] = tick + a.ticks(); }
+            case STOP -> { if (t >= 0) state.timerEnd[t] = -1; }
+            default -> { }
+        }
+        state.memoryChanged = true;
+    }
+
     /** Applies the matched rule's action to the state at {@code tick} and returns the output (0..15). */
     public static int step(Program program, State state, int matched, long tick) {
         boolean entered = matched != state.matched;
@@ -136,7 +234,7 @@ public final class Engine {
             case SET -> { state.output = a.strength(); state.pulseUntil = -1; }
             case PULSE -> { if (entered) { state.output = a.strength(); state.pulseUntil = tick + a.ticks(); } }
             case TOGGLE -> { if (entered) { state.toggled = !state.toggled; state.output = state.toggled ? a.strength() : 0; state.pulseUntil = -1; } }
-            case KEEP -> { }
+            default -> { }   // KEEP
         }
         if (state.pulseUntil >= 0 && tick >= state.pulseUntil) { state.output = 0; state.pulseUntil = -1; }
         return state.output;

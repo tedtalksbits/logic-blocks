@@ -25,13 +25,13 @@ next to every condition, what the block sees right now and whether it's true, be
 Ready-made jars are on the [Releases](https://github.com/tedtalksbits/logic-blocks/releases) page (the release is
 named after the plugin version; the client's version is in the notes), or build them yourself (below).
 
-**Server:** copy `logic-plugin/build/libs/logic-plugin-0.3.0.jar` into `plugins/` and restart. Settings are in
+**Server:** copy `logic-plugin/build/libs/logic-plugin-0.4.0.jar` into `plugins/` and restart. Settings are in
 `plugins/LogicBlocks/config.yml`.
 
 **Each player who wants to edit rules:** Fabric for Minecraft 26.3 (Loader 0.19.5), then put
-`logic-blocks-client-0.4.0.jar` and `fabric-api-0.164.0+26.3.jar` in `.minecraft/mods`. Plugin 0.3.0 needs client
-0.4.0 (rules v2); an older client says it needs updating instead of opening the editor. Existing Logic Blocks and
-Logic Block items keep their rules: v1 programs are read and upgraded automatically.
+`logic-blocks-client-0.5.0.jar` and `fabric-api-0.164.0+26.3.jar` in `.minecraft/mods`. Plugin 0.4.0 needs client
+0.5.0 (counters and timers); an older client says it needs updating instead of opening the editor. Existing Logic Blocks and
+Logic Block items keep their rules: older programs are read and upgraded automatically.
 
 ## Using it
 
@@ -62,11 +62,11 @@ A Logic Block has two lists of rules, on two tabs in the editor:
 
 - **If/Else**: the first rule whose conditions are all true sets the redstone output (*if / else if / else*),
   and *otherwise* covers the rest. Up to 8 rules.
-- **When**: *every* rule whose conditions are all true runs, every check, alongside If/Else. Up to 8 rules.
-  For moving items.
+- **When**: *every* rule whose conditions are all true runs, alongside If/Else. Up to 8 rules.
+  For moving items, counters and timers.
 
 Each rule has 0 to 3 conditions (all must be true; none means *always*) and up to 3 actions. An output rule's first
-action sets the output; the others, and all of a When rule's actions, are moves. The difference between the tabs is
+action sets the output; the others, and all of a When rule's actions, are moves and counter and timer actions. The difference between the tabs is
 *one winner* (If/Else) versus *every true rule* (When): put several independent jobs, like one move per item, in When.
 
 | Condition | Reads | Compare |
@@ -76,6 +76,8 @@ action sets the output; the others, and all of a When rule's actions, are moves.
 | **Items** | how many of an item (or `*` for any item) the chest, barrel, hopper... on that side holds | = != < <= > >= a number |
 | **Players** | players within N blocks (1..16) | = != < <= > >= a number |
 | **Change** | the signal on a side (or any side) has just turned on or off | turns on / turns off: true for one check, so a held button counts once |
+| **Counter** | this block's counter A, B, C or D | = != < <= > >= a number |
+| **Timer** | this block's timer T1, T2, T3 or T4 | is / is not running, is / is not done (done: true for the one check when it runs out) |
 
 | Action | Does |
 |---|---|
@@ -84,6 +86,10 @@ action sets the output; the others, and all of a When rule's actions, are moves.
 | **Toggle** N | when the rule starts matching, flips between N and 0, and stays there |
 | **Keep** | leaves the output as it is |
 | **Move** item from side to side | moves one item (or `*` for any) from the container on one side to the container on another, every 8 ticks at most (a hopper's speed). Not an output: it goes after an If/Else rule's output, or in a When rule |
+| **Add** N to / **Subtract** N from a counter | counts up or down (counters stay between 0 and 100000) |
+| **Set** a counter to N | sets it, for example back to 0 |
+| **Start** a timer for S seconds | it runs out after S seconds (0.05 to 3600); starting it again while it runs starts it over |
+| **Stop** a timer | stops it without it being done |
 
 *Otherwise* can output a number or **Keep**. Use Keep with Toggle and Pulse so they aren't overwritten when the
 input goes away. Example: a button feeding a repeater that points into the west side, `signal west turns on -> toggle
@@ -98,6 +104,36 @@ Protection plugins that stop hoppers stop it too. Examples:
 When:    always -> move diamond from up to down                     a sorter station (docs/SORTER.md)
 When:    coal north >= 1 and coal down < 8 -> move coal from north to down     keep a furnace fuelled
 If/Else: signal west turns on -> toggle 15, then move * from up to down    a latch that also empties a chest
+```
+
+**Counters and timers** are the block's own memory: 4 counters (A to D) and 4 timers (T1 to T4) per Logic Block,
+which no other block can see (blocks talk through redstone, as always).
+
+- Counter and timer actions run **once each time their rule becomes true**, like Pulse and Toggle, so `signal west
+  > 0 -> add 1 to A` counts presses, not ticks. Moves are the exception: they repeat while their rule is true.
+- Every rule sees the counters and timers as they were at the start of the check; changes show at the next check
+  (2 ticks later). When two rules change the same counter in one check, they apply in order: If/Else first, then
+  When rules from the top.
+- They survive restarts and chunk reloads. **Saving new rules, or breaking the block, starts them over** (the item
+  carries the rules, not the memory). The editor shows their current values.
+
+```
+If/Else: signal west turns on -> output 15, then start T1 for 5 seconds     a door that closes 5 seconds after a press
+If/Else: T1 is done -> output 0                                             (otherwise: Keep)
+When:    T1 is not running -> start T1 for 10 seconds                       a clock: with "If/Else: T1 is done -> pulse 15"
+When:    signal west = 0 -> start T1 for 3 seconds                          off 3 seconds after the input (with "signal west > 0 -> output 15", "T1 is done -> output 0")
+```
+
+`/logic demo lock` builds a **combination lock**: three buttons pressed in the right order open an iron door for 3
+seconds, and a press out of order starts over. Its rules, in the editor:
+
+```
+When:    signal west turns on -> set A to 1
+When:    signal north turns on and counter A = 1 -> set A to 2
+When:    signal east turns on and counter A = 2 -> set A to 3
+When:    signal north turns on and counter A != 1 -> set A to 0
+When:    signal east turns on and counter A != 2 -> set A to 0
+If/Else: counter A = 3 -> pulse 15 for 60 ticks, then set A to 0             (otherwise: Keep)
 ```
 
 ### Good to know
@@ -134,6 +170,7 @@ If/Else: signal west turns on -> toggle 15, then move * from up to down    a lat
 | `/logic status` | operators | How many are loaded and how many editors are open |
 | `/logic demo sorter [item ...]` | operators | Builds a working, stocked item sorter next to you, one Logic Block per station ([docs/SORTER.md](docs/SORTER.md)) |
 | `/logic demo redstone-sorter [item ...]` | operators | The same with pure redstone, two Logic Blocks per station |
+| `/logic demo lock` | operators | Builds a combination lock (a counter) north of you |
 
 `logicblocks.use` (everyone): place Logic Blocks and edit your own. `logicblocks.admin` (operators): edit anyone's,
 `give`, `status`.
@@ -141,9 +178,9 @@ If/Else: signal west turns on -> toggle 15, then move * from up to down    a lat
 ## Building
 
 Plugin (from the repo root): `gradle build` with Java 25. It runs the tests and writes
-`logic-plugin/build/libs/logic-plugin-0.3.0.jar`.
+`logic-plugin/build/libs/logic-plugin-0.4.0.jar`.
 
-Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.4.0.jar`. The
+Client: `cd fabric-client && gradlew build` writes `fabric-client/build/libs/logic-blocks-client-0.5.0.jar`. The
 client compiles the plugin's rule model (`dev.whizzle.logic.model`) from `logic-plugin/src`, so both sides share
 one implementation of the rules, their encoding and their evaluation.
 

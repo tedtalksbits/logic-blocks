@@ -121,10 +121,10 @@ public final class LogicManager implements Listener {
         return node;
     }
 
-    /** Replaces the program; state restarts (toggles off, pulses stop) so the new rules apply cleanly. */
+    /** Replaces the program; state restarts (toggles off, pulses stop, counters 0, timers stopped) so the new rules apply cleanly. */
     public void reprogram(LogicNode node, Program program) {
         node.program = program;
-        node.state.matched = -2; node.state.toggled = false; node.state.pulseUntil = -1; node.state.output = 0;
+        node.state.reset();
         node.lastEval = Long.MIN_VALUE / 2;
         save(node);
     }
@@ -164,14 +164,13 @@ public final class LogicManager implements Listener {
         n.lastEval = tick;
         int beforeMatched = n.state.matched, beforeOutput = n.state.output;
         boolean beforeToggle = n.state.toggled;
-        Engine.Evaluation e = Engine.evaluate(n.program, new WorldInputs(block), n.state.signals);
-        Engine.remember(n.state.signals, e);
+        Engine.Evaluation e = Engine.run(n.program, new WorldInputs(block), n.state, tick);
         n.last = e;
-        Engine.step(n.program, n.state, e.matched(), tick);
         if (tick >= n.state.nextMove)
             for (Action a : Engine.worldActions(n.program, e))
                 if (a.kind() == Action.Kind.MOVE && Mover.move(block, a)) { n.state.nextMove = tick + Mover.COOLDOWN; break; }
-        if (n.state.matched != beforeMatched || n.state.output != beforeOutput || n.state.toggled != beforeToggle) save(n);
+        if (n.state.matched != beforeMatched || n.state.output != beforeOutput || n.state.toggled != beforeToggle || n.state.memoryChanged) save(n);
+        n.state.memoryChanged = false;
         evaluated.accept(n);
     }
 

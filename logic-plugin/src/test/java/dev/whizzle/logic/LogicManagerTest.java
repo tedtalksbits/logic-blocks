@@ -84,6 +84,42 @@ class LogicManagerTest {
         assertTrue(back.state().toggled, "latched state survives");
     }
 
+    @Test void countersAndTimersSurviveAReloadButNotBreakingOrSaving() {
+        LogicNode n = place(alex, 3, 64, 3, LogicItem.create(Demos.lockProgram()));
+        n.state().counters[0] = 2; n.state().counters[3] = 99_999;
+        n.state().timerEnd[2] = manager.now() + 300;
+        n.state().alsoWas = 0b10110;
+        Chunk chunk = world.getChunkAt(0, 0);
+        manager.unloadChunk(chunk);
+        manager.loadChunk(chunk);
+        LogicNode back = manager.at(world.getBlockAt(3, 64, 3)).orElseThrow();
+        assertArrayEquals(new int[]{2, 0, 0, 99_999}, back.state().counters);
+        assertEquals(manager.now() + 300, back.state().timerEnd[2], "time left is kept");
+        assertEquals(-1, back.state().timerEnd[0]);
+        assertEquals(0b10110, back.state().alsoWas);
+
+        manager.reprogram(back, Demos.lockProgram());
+        assertArrayEquals(new int[4], back.state().counters, "saving new rules starts the block fresh");
+        assertEquals(-1, back.state().timerEnd[2]);
+
+        back.state().counters[0] = 2;
+        Block b = world.getBlockAt(3, 64, 3);
+        server.getPluginManager().callEvent(new BlockBreakEvent(b, alex));
+        place(alex, 3, 64, 3, LogicItem.create(Demos.lockProgram()));
+        assertArrayEquals(new int[4], manager.at(b).orElseThrow().state().counters, "the item carries the rules, not the memory");
+    }
+
+    @Test void recordsFromBeforeCountersStillLoad() {
+        LogicNode n = place(alex, 3, 64, 3, LogicItem.create(redWoolProgram()));
+        byte[] v1 = new Wire.Writer().varInt(1).bytes(redWoolProgram().encode()).utf(alex.getUniqueId().toString()).utf("Alex")
+            .varInt(0 + 2).varInt(15).varInt(0).bool(false).bytes();
+        LogicNode old = LogicNode.decode(world, 3, 64, 3, v1, 0);
+        assertEquals(redWoolProgram(), old.program());
+        assertEquals(15, old.state().output);
+        assertArrayEquals(new int[4], old.state().counters);
+        assertEquals(n.program(), old.program());
+    }
+
     @Test void chunkEdgesAreStoredSeparately() {
         place(alex, 0, 1, 15, LogicItem.create(Program.EMPTY));
         place(alex, 15, 1, 0, LogicItem.create(redWoolProgram()));

@@ -61,6 +61,34 @@ not stored: after a restart nothing "turns on" at the first check). Checks every
 reads format 1, so v1 blocks and items load unchanged and are saved as format 2 the next time they change. The
 protocol went to 2 with it: an older client says it needs updating instead of misreading rules.
 
+## Counters and timers
+
+Each block has 4 counters (A to D, 0 to 100000) and 4 timers (T1 to T4, up to an hour), in `Engine.State`. They are
+private: no other block reads them, so there is no hidden shared state; blocks still talk through redstone. Shared
+variables or wireless links can come later as their own feature.
+
+`Engine.run` is one check: timers whose end tick has passed become **done** for that check only (`State.timerDone`),
+then every condition is evaluated against the values as they were at the start of the check, then counter and timer
+actions run, then the output. Reading start-of-check values makes the When rules independent of their order, the
+way they are meant to be; when two rules change the same counter in one check, they apply in list order.
+
+Counter and timer actions are **edge-triggered**: an If/Else rule's run when it starts matching (as Pulse and Toggle
+do), a When rule's when it becomes true (`State.alsoWas`, one bit per When rule). A level-triggered "add 1" would
+count up every 2 ticks while a button is held, which is never what a player means; `signal west > 0 -> add 1 to A`
+counts presses. Moves stay level-triggered: they repeat while true, like a hopper.
+
+They survive restarts and chunk reloads (the node record stores counters, timers as ticks left, and `alsoWas`, so a
+held input doesn't count again after a reload). Saving new rules (`LogicManager.reprogram`) and breaking the block
+start them over: the item carries the rules, not the memory, so a moved or copied block starts fresh.
+
+`/logic demo lock` (`Demos.lock`) builds the showcase: a combination lock with one counter. The self-test presses
+its buttons on a real server, in the right and wrong orders, and also runs a delayed off, a clock (pulses exactly
+20 ticks apart) and a counter across a real chunk unload.
+
+**Format 3** (`Program.FORMAT`) is format 2's layout with the new condition and action kinds: a plugin that only
+knows format 2 refuses such a program instead of misreading it. Protocol 3 carries it, and the snapshot gained the
+counters and timers so the editor shows them live.
+
 ## Beyond redstone: the five rules
 
 Anything that does more than switch redstone (so far: **Move items**) must pass all five:
@@ -79,7 +107,7 @@ Several moves in one block share the one-item-per-8-ticks budget; the first move
 
 ## Storage
 
-Each block's program, owner and state live in its **chunk's persistent data** under
+Each block's program, owner and state (output, toggles, pulses, counters, timers) live in its **chunk's persistent data** under
 `logicblocks:b.<x&15>.<y>.<z&15>`, written whenever they change. They travel with the world save, need no
 separate file, and are loaded and unloaded with the chunk, so a Logic Block only runs while its chunk is loaded.
 If the block at a stored position isn't a daylight detector anymore (WorldEdit, a map edit), the record is dropped

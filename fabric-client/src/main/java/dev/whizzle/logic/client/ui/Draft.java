@@ -31,58 +31,113 @@ public final class Draft {
 		public void setKind(Condition.Kind k) {
 			kind = k;
 			switch (k) {
-				case BLOCK -> { if (side == Side.ANY) side = Side.NORTH; op = op == Condition.Op.IS_NOT ? op : Condition.Op.IS; if (id.equals("*")) id = "red_wool"; }
+				case BLOCK -> { if (side == Side.ANY) side = Side.NORTH; op = op == Condition.Op.IS_NOT ? op : Condition.Op.IS; if (id.equals("*") || memoryId(id)) id = "red_wool"; }
 				case SIGNAL -> { op = op.numeric() ? op : Condition.Op.GE; }
-				case ITEMS -> { if (side == Side.ANY) side = Side.DOWN; op = op.numeric() ? op : Condition.Op.GE; if (!itemLike(id)) id = "*"; }
+				case ITEMS -> { if (side == Side.ANY) side = Side.DOWN; op = op.numeric() ? op : Condition.Op.GE; if (!itemLike(id) || memoryId(id)) id = "*"; }
 				case PLAYERS -> { op = op.numeric() ? op : Condition.Op.GE; }
 				case CHANGE -> { op = Condition.Op.EQ; if (!number.equals("0")) number = "1"; }
+				case COUNTER -> { op = op.numeric() ? op : Condition.Op.GE; if (Condition.counterIndex(id) < 0) id = "a"; if (parse(number) < 0) number = "1"; }
+				case TIMER -> { op = op == Condition.Op.IS_NOT ? op : Condition.Op.IS; if (Condition.timerIndex(id) < 0) id = "t1"; number = "0"; }
 			}
 		}
+
+		/** TIMER: "running" (true) or "done". */
+		public boolean running() { return number.equals("1"); }
+		public void flipTimer() { number = running() ? "0" : "1"; }
 
 		/** CHANGE: turns on (true) or off. */
 		public boolean turnsOn() { return !number.equals("0"); }
 		public void flipTurn() { number = turnsOn() ? "0" : "1"; }
 		private static boolean itemLike(String id) { return !id.isBlank(); }
 
+		/** Whether the row has a side button. */
+		public boolean hasSide() { return kind != Condition.Kind.PLAYERS && kind != Condition.Kind.COUNTER && kind != Condition.Kind.TIMER; }
+
 		public List<Side> sides() {
 			return kind == Condition.Kind.SIGNAL || kind == Condition.Kind.CHANGE ? List.of(Side.values()) : List.of(Side.FACES);
 		}
 		public List<Condition.Op> ops() {
-			return kind == Condition.Kind.BLOCK ? List.of(Condition.Op.IS, Condition.Op.IS_NOT)
+			return kind == Condition.Kind.BLOCK || kind == Condition.Kind.TIMER ? List.of(Condition.Op.IS, Condition.Op.IS_NOT)
 				: kind == Condition.Kind.CHANGE ? List.of(Condition.Op.EQ)
 				: List.of(Condition.Op.EQ, Condition.Op.NE, Condition.Op.LT, Condition.Op.LE, Condition.Op.GT, Condition.Op.GE);
 		}
 
 		public Condition toCondition() {
-			return new Condition(kind, kind == Condition.Kind.PLAYERS ? Side.ANY : side, op, id, parse(number), parse(radius));
+			return new Condition(kind, hasSide() ? side : Side.ANY, op, id, parse(number), parse(radius));
 		}
 	}
 
-	/** A "move items" action: one {@code id} item ("*" = any) from the container on {@code from} to the one on {@code to}. */
-	public static final class Move {
+	/** The kinds an extra action cycles through, in order. */
+	public static final List<Action.Kind> EXTRA_KINDS = List.of(Action.Kind.MOVE, Action.Kind.ADD, Action.Kind.SUBTRACT, Action.Kind.SET_COUNTER,
+		Action.Kind.START, Action.Kind.STOP);
+
+	/**
+	 * An action besides the output: move items ({@code id} item, "*" = any, from the container on {@code from} to the
+	 * one on {@code to}), or change a counter ({@code id} "a" to "d", by or to {@code amount}) or a timer ({@code id}
+	 * "t1" to "t4", for {@code seconds}).
+	 */
+	public static final class Extra {
+		public Action.Kind kind = Action.Kind.MOVE;
 		public String id = "*";
 		public Side from = Side.UP, to = Side.DOWN;
+		public String amount = "1", seconds = "5";
 
-		public Move() {}
-		Move(Action a) { id = a.id(); from = a.from(); to = a.to(); }
+		public Extra() {}
+		Extra(Action a) {
+			kind = a.kind(); id = a.id(); from = a.from(); to = a.to();
+			if (kind.counter()) amount = String.valueOf(a.strength());
+			if (kind == Action.Kind.START) seconds = Action.seconds(a.ticks()).replace("s", "");
+			if (from == Side.ANY) from = Side.UP;
+			if (to == Side.ANY) to = Side.DOWN;
+		}
 
-		Action toAction() { return Action.move(id, from, to); }
+		/** Switching kind keeps what still fits and picks valid defaults for the rest. */
+		public void setKind(Action.Kind k) {
+			if (k.counter() && Condition.counterIndex(id) < 0) id = "a";
+			if ((k == Action.Kind.START || k == Action.Kind.STOP) && Condition.timerIndex(id) < 0) id = "t1";
+			if (k == Action.Kind.MOVE && memoryId(id)) id = "*";
+			if (k == Action.Kind.SET_COUNTER && parse(amount) < 0) amount = "0";
+			if ((k == Action.Kind.ADD || k == Action.Kind.SUBTRACT) && parse(amount) < 1) amount = "1";
+			kind = k;
+		}
+
+		public Action toAction() {
+			return switch (kind) {
+				case ADD -> Action.add(id, parse(amount));
+				case SUBTRACT -> Action.subtract(id, parse(amount));
+				case SET_COUNTER -> Action.setCounter(id, parse(amount));
+				case START -> Action.start(id, ticks(seconds));
+				case STOP -> Action.stop(id);
+				default -> Action.move(id, from, to);
+			};
+		}
+	}
+
+	/** A counter or timer id ("a" to "d", "t1" to "t4"), which isn't a block or item. */
+	static boolean memoryId(String id) { return Condition.counterIndex(id) >= 0 || Condition.timerIndex(id) >= 0; }
+
+	/** "5" or "0.5" seconds as ticks (20 per second), or -1 if it isn't a number. */
+	public static int ticks(String seconds) {
+		try {
+			double s = Double.parseDouble(seconds.trim());
+			return s <= 0 || s > 1e6 ? -1 : (int) Math.round(s * 20);
+		} catch (NumberFormatException e) { return -1; }
 	}
 
 	/**
-	 * An output rule (its output action in {@code action}, {@code strength}, {@code ticks}, then any moves) or an
-	 * "also" rule (moves only).
+	 * An output rule (its output action in {@code action}, {@code strength}, {@code ticks}, then any extra actions) or
+	 * an "also" rule (extra actions only).
 	 */
 	public static final class Rule {
 		public final List<Cond> conditions = new ArrayList<>();
 		public Action.Kind action = Action.Kind.SET;
 		public String strength = "15", ticks = "10";
-		public final List<Move> moves = new ArrayList<>();
+		public final List<Extra> extras = new ArrayList<>();
 
 		/** A new output rule: north is red_wool -> output 15. */
 		public Rule() { conditions.add(new Cond()); }
 		/** A new "also" rule: always, move any item from up to down. */
-		public static Rule also() { Rule r = new Rule(); r.conditions.clear(); r.moves.add(new Move()); return r; }
+		public static Rule also() { Rule r = new Rule(); r.conditions.clear(); r.extras.add(new Extra()); return r; }
 
 		Rule(Program.Rule r, boolean output) {
 			for (Condition c : r.conditions()) conditions.add(new Cond(c));
@@ -92,12 +147,12 @@ public final class Draft {
 				strength = String.valueOf(as.getFirst().strength());
 				ticks = String.valueOf(as.getFirst().ticks() > 0 ? as.getFirst().ticks() : 10);
 			}
-			for (int i = output ? 1 : 0; i < as.size(); i++) if (as.get(i).kind() == Action.Kind.MOVE) moves.add(new Move(as.get(i)));
+			for (int i = output ? 1 : 0; i < as.size(); i++) if (!as.get(i).kind().output()) extras.add(new Extra(as.get(i)));
 		}
 		Action toAction() { return new Action(action, parse(strength), action == Action.Kind.PULSE ? parse(ticks) : 0); }
 
-		/** How many moves this rule may have: an output rule's first action is its output. */
-		public static int maxMoves(boolean output) { return output ? Program.MAX_ACTIONS - 1 : Program.MAX_ACTIONS; }
+		/** How many extra actions this rule may have: an output rule's first action is its output. */
+		public static int maxExtras(boolean output) { return output ? Program.MAX_ACTIONS - 1 : Program.MAX_ACTIONS; }
 	}
 
 	public final List<Rule> rules = new ArrayList<>();
@@ -150,10 +205,10 @@ public final class Draft {
 		}
 		List<Action> actions = new ArrayList<>();
 		if (output) actions.add(rule.toAction());
-		else if (rule.moves.isEmpty()) return where + "add something for it to do (+ Move)";
-		for (Move m : rule.moves) {
+		else if (rule.extras.isEmpty()) return where + "add something for it to do (+ Action)";
+		for (Extra m : rule.extras) {
 			Action a = m.toAction();
-			if (!a.id().equals("*") && !knownItem.test(a.id())) return where + "no item called \"" + a.id() + "\"";
+			if (a.kind() == Action.Kind.MOVE && !a.id().equals("*") && !knownItem.test(a.id())) return where + "no item called \"" + a.id() + "\"";
 			actions.add(a);
 		}
 		out.add(new Program.Rule(cs, actions));

@@ -20,7 +20,7 @@ import java.util.function.Consumer;
 /**
  * The rule editor. Left: two tabs, the <b>If/Else</b> rules (the first true one sets the output; the one matching right
  * now is green) with "otherwise", and the <b>When</b> rules (every true one runs). Right: the selected rule's conditions, each
- * with what the block sees right now and true/false, then what it does: an output, and moves. Edits are checked live
+ * with what the block sees right now and true/false, then what it does: an output, then moves and counter and timer actions. Edits are checked live
  * against what the block sees, before saving.
  */
 public final class LogicScreen extends Screen {
@@ -32,6 +32,11 @@ public final class LogicScreen extends Screen {
 	/** Content width and left edge of the centred column. */
 	private int cw, left;
 	private final java.util.Map<EditBox, IdCompletion> idBoxes = new java.util.HashMap<>();
+	/** Words between the buttons of the extra-action rows ("from", "to", "for"), placed by init, drawn each frame. */
+	private record Label(int x, int y, String text, int color) {}
+	private final List<Label> labels = new java.util.ArrayList<>();
+	/** Where each extra action's "now:" line starts. */
+	private final List<Integer> extraNowX = new java.util.ArrayList<>();
 	private static IdCompletion blockIds, itemIds;
 
 	private final Messages.Open open;
@@ -79,6 +84,8 @@ public final class LogicScreen extends Screen {
 		cw = Math.min(width, MAX_WIDTH);
 		left = (width - cw) / 2;
 		idBoxes.clear();
+		labels.clear();
+		extraNowX.clear();
 		listW = Math.clamp(cw / 4, 112, 180);
 		selected = Math.min(selected, Math.max(0, draft.rules.size() - 1));
 		selectedAlso = Math.min(selectedAlso, Math.max(0, draft.also.size() - 1));
@@ -175,6 +182,16 @@ public final class LogicScreen extends Screen {
 					x = cycle(x, y, 44, sideLabel(cond.side), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
 					x = cycle(x, y, 56, cond.turnsOn() ? "turns on" : "turns off", edit, cond::flipTurn);
 				}
+				case COUNTER -> {
+					x = cycle(x, y, 22, Condition.memoryLabel(cond.id), edit, () -> cond.id = Draft.next(COUNTER_IDS, cond.id));
+					x = cycle(x, y, 22, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
+					x = number(x, y, 40, cond.number, v -> cond.number = v, edit);
+				}
+				case TIMER -> {
+					x = cycle(x, y, 26, Condition.memoryLabel(cond.id), edit, () -> cond.id = Draft.next(TIMER_IDS, cond.id));
+					x = cycle(x, y, 40, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
+					x = cycle(x, y, 50, cond.running() ? "running" : "done", edit, cond::flipTimer);
+				}
 			}
 			int index = c;
 			addRenderableWidget(Button.builder(Component.literal("x"), b -> { rule.conditions.remove(index); changed(); }).pos(x + 2, y).size(16, 18).build()).active = edit;
@@ -196,28 +213,61 @@ public final class LogicScreen extends Screen {
 			if (rule.action == Action.Kind.PULSE) { x += 22; number(x, y, 34, rule.ticks, v -> rule.ticks = v, edit); }
 			y += 24;
 		}
-		for (int m = 0; m < rule.moves.size(); m++) {
-			Draft.Move move = rule.moves.get(m);
-			int x = x0 + 34;   // "and" / "Do" label
-			x += font.width("Move") + 6;
-			x = text(x, y, 70, move.id, v -> move.id = v, edit, false);
-			x += font.width("from") + 4;
-			x = cycle(x, y, 40, move.from.label(), edit, () -> move.from = Draft.next(List.of(Side.FACES), move.from));
-			x += font.width("to") + 4;
-			x = cycle(x, y, 40, move.to.label(), edit, () -> move.to = Draft.next(List.of(Side.FACES), move.to));
-			int index = m;
-			addRenderableWidget(Button.builder(Component.literal("x"), b -> { rule.moves.remove(index); changed(); }).pos(x + 2, y).size(16, 18).build()).active = edit;
-			String use = moveSuggestion(move);
-			if (edit) {
-				int bx = x0 + 34;
-				if (use != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { move.id = use; changed(); }).pos(bx, y + 20).size(28, 13).build()); bx += 30; }
-				handButton(bx, y + 20, move.id, false, v -> move.id = v);
+		for (int m = 0; m < rule.extras.size(); m++) {
+			Draft.Extra ex = rule.extras.get(m);
+			labels.add(new Label(x0, y + 5, !output && m == 0 ? "Do" : "and", WHITE));
+			int x = x0 + 34;
+			x = cycle(x, y, 52, extraLabel(ex.kind), edit, () -> ex.setKind(Draft.next(Draft.EXTRA_KINDS, ex.kind)));
+			switch (ex.kind) {
+				case ADD, SUBTRACT -> {
+					x = number(x, y, 40, ex.amount, v -> ex.amount = v, edit);
+					x = word(x, y, ex.kind == Action.Kind.ADD ? "to" : "from");
+					x = cycle(x, y, 22, Condition.memoryLabel(ex.id), edit, () -> ex.id = Draft.next(COUNTER_IDS, ex.id));
+				}
+				case SET_COUNTER -> {
+					x = cycle(x, y, 22, Condition.memoryLabel(ex.id), edit, () -> ex.id = Draft.next(COUNTER_IDS, ex.id));
+					x = word(x, y, "to");
+					x = number(x, y, 40, ex.amount, v -> ex.amount = v, edit);
+				}
+				case START -> {
+					x = cycle(x, y, 26, Condition.memoryLabel(ex.id), edit, () -> ex.id = Draft.next(TIMER_IDS, ex.id));
+					x = word(x, y, "for");
+					x = decimal(x, y, 40, ex.seconds, v -> ex.seconds = v, edit);
+					x = word(x, y, "seconds");
+				}
+				case STOP -> x = cycle(x, y, 26, Condition.memoryLabel(ex.id), edit, () -> ex.id = Draft.next(TIMER_IDS, ex.id));
+				default -> {
+					x = text(x, y, 70, ex.id, v -> ex.id = v, edit, false);
+					x = word(x, y, "from");
+					x = cycle(x, y, 40, ex.from.label(), edit, () -> ex.from = Draft.next(List.of(Side.FACES), ex.from));
+					x = word(x, y, "to");
+					x = cycle(x, y, 40, ex.to.label(), edit, () -> ex.to = Draft.next(List.of(Side.FACES), ex.to));
+				}
 			}
+			int index = m;
+			addRenderableWidget(Button.builder(Component.literal("x"), b -> { rule.extras.remove(index); changed(); }).pos(x + 2, y).size(16, 18).build()).active = edit;
+			int lx = x0 + 34;
+			if (ex.kind == Action.Kind.MOVE && edit) {
+				String use = moveSuggestion(ex);
+				if (use != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { ex.id = use; changed(); }).pos(lx, y + 20).size(28, 13).build()); lx += 30; }
+				String h = held(false);
+				if (h != null && !h.equals(ex.id)) { handButton(lx, y + 20, ex.id, false, v -> ex.id = v); lx += 32; }
+			}
+			extraNowX.add(lx);
 			y += ROW;
 		}
-		Button addMove = addRenderableWidget(Button.builder(Component.literal("+ Move items"), b -> { rule.moves.add(new Draft.Move()); changed(); })
-			.pos(x0, y).size(76, 18).build());
-		addMove.active = edit && rule.moves.size() < Draft.Rule.maxMoves(output);
+		Button addExtra = addRenderableWidget(Button.builder(Component.literal("+ Action"), b -> { rule.extras.add(new Draft.Extra()); changed(); })
+			.pos(x0, y).size(60, 18).build());
+		addExtra.active = edit && rule.extras.size() < Draft.Rule.maxExtras(output);
+	}
+
+	private static final List<String> COUNTER_IDS = java.util.stream.IntStream.range(0, Condition.COUNTERS).mapToObj(Condition::counterId).toList();
+	private static final List<String> TIMER_IDS = java.util.stream.IntStream.range(0, Condition.TIMERS).mapToObj(Condition::timerId).toList();
+
+	/** A grey word between buttons; returns the x after it. */
+	private int word(int x, int y, String text) {
+		labels.add(new Label(x + 1, y + 5, text, GRAY));
+		return x + font.width(text) + 5;
 	}
 
 	private static final List<Action.Kind> OUTPUT_KINDS = List.of(Action.Kind.SET, Action.Kind.PULSE, Action.Kind.TOGGLE, Action.Kind.KEEP);
@@ -233,7 +283,7 @@ public final class LogicScreen extends Screen {
 	}
 
 	/** The most plentiful item in the container a move takes from, if it isn't already the move's item. */
-	private String moveSuggestion(Draft.Move m) { return mostIn(m.from, m.id); }
+	private String moveSuggestion(Draft.Extra m) { return mostIn(m.from, m.id); }
 
 	private String mostIn(Side side, String current) {
 		var container = snapshot.containers().get(side.ordinal());
@@ -254,6 +304,23 @@ public final class LogicScreen extends Screen {
 		box.setResponder(v -> {
 			String digits = v.replaceAll("[^0-9]", "");
 			if (!digits.equals(v)) { box.setValue(digits); return; }   // numbers only; setValue calls back with the clean text
+			set.accept(v);
+			if (!v.equals(value)) dirty = true;
+		});
+		box.setEditable(edit);
+		return x + w + 2;
+	}
+
+	/** A box for seconds: digits and one decimal point. */
+	private int decimal(int x, int y, int w, String value, Consumer<String> set, boolean edit) {
+		EditBox box = addRenderableWidget(new EditBox(font, x, y, w, 18, Component.literal("seconds")));
+		box.setMaxLength(7);
+		box.setValue(value);
+		box.setResponder(v -> {
+			String clean = v.replaceAll("[^0-9.]", "");
+			int dot = clean.indexOf('.');
+			if (dot >= 0) clean = clean.substring(0, dot + 1) + clean.substring(dot + 1).replace(".", "");
+			if (!clean.equals(v)) { box.setValue(clean); return; }
 			set.accept(v);
 			if (!v.equals(value)) dirty = true;
 		});
@@ -356,8 +423,23 @@ public final class LogicScreen extends Screen {
 		return -1;
 	}
 
+	/** What an extra action works on, right now: a move's containers, a counter's value, a timer's state. */
+	private String extraReading(Draft.Extra ex) {
+		if (ex.kind.counter()) {
+			int i = Condition.counterIndex(ex.id);
+			return i < 0 ? "" : Condition.memoryLabel(ex.id) + " = " + snapshot.counter(i);
+		}
+		if (ex.kind == Action.Kind.START || ex.kind == Action.Kind.STOP) {
+			int i = Condition.timerIndex(ex.id);
+			if (i < 0) return "";
+			int left = snapshot.timerLeft(i);
+			return Condition.memoryLabel(ex.id) + (left > 0 ? " running, " + Action.seconds(left) + " left" : " not running");
+		}
+		return moveReading(ex);
+	}
+
 	/** What a move would see now: "up: hopper, 3 diamond -> down: chest". */
-	private String moveReading(Draft.Move m) {
+	private String moveReading(Draft.Extra m) {
 		var from = snapshot.containers().get(m.from.ordinal());
 		var to = snapshot.containers().get(m.to.ordinal());
 		String fromText = m.from.label().toLowerCase(Locale.ROOT) + ": " + snapshot.block(m.from)
@@ -366,7 +448,7 @@ public final class LogicScreen extends Screen {
 		return fromText + " -> " + toText;
 	}
 
-	private boolean moveReady(Draft.Move m) {
+	private boolean moveReady(Draft.Extra m) {
 		return snapshot.containers().get(m.from.ordinal()) != null && snapshot.containers().get(m.to.ordinal()) != null && m.from != m.to;
 	}
 
@@ -437,7 +519,7 @@ public final class LogicScreen extends Screen {
 		List<Draft.Rule> list = list();
 		if (list.isEmpty()) {
 			String hint = alsoTab
-				? "When rules: every true one runs, every check, alongside If/Else. For moving items. \"+ When\" adds one."
+				? "When rules: every true one runs, alongside If/Else. For moving items, counters and timers. \"+ When\" adds one."
 				: "If/Else rules: the first true one sets the output, \"Otherwise\" covers the rest. \"+ Rule\" adds one.";
 			drawWrapped(g, hint, x0, 30, cw - x0 - 8, GRAY);
 		} else {
@@ -470,28 +552,19 @@ public final class LogicScreen extends Screen {
 				if (rule.action == Action.Kind.PULSE) g.text(font, "ticks (20 = 1 s)", px + 24 + 36, y + 5, GRAY);
 				y += 24;
 			}
-			for (int m = 0; m < rule.moves.size(); m++) {
-				Draft.Move move = rule.moves.get(m);
-				g.text(font, alsoTab && m == 0 ? "Do" : "and", x0, y + 5, WHITE);
-				int x = x0 + 34;
-				g.text(font, "Move", x, y + 5, WHITE);
-				x += font.width("Move") + 6 + 72;
-				g.text(font, "from", x, y + 5, GRAY);
-				x += font.width("from") + 4 + 42;
-				g.text(font, "to", x, y + 5, GRAY);
-				int lx = x0 + 34;
-				if (open.editable()) {
-					if (moveSuggestion(move) != null) lx += 30;
-					String h = held(false);
-					if (h != null && !h.equals(move.id)) lx += 32;
-				}
-				g.text(font, font.plainSubstrByWidth("now: " + moveReading(move), cw - lx - 6), lx, y + 23, moveReady(move) ? GREEN : RED);
+			for (Label l : labels) g.text(font, l.text(), l.x(), l.y(), l.color());
+			for (int m = 0; m < rule.extras.size() && m < extraNowX.size(); m++) {
+				Draft.Extra ex = rule.extras.get(m);
+				int lx = extraNowX.get(m);
+				boolean move = ex.kind == Action.Kind.MOVE;
+				g.text(font, font.plainSubstrByWidth("now: " + extraReading(ex), cw - lx - 6), lx, y + 23, move ? (moveReady(ex) ? GREEN : RED) : GRAY);
 				y += ROW;
 			}
 			y += 22;
-			if (!rule.moves.isEmpty()) {
-				y = drawWrapped(g, "Moves one item every 8 ticks (hopper speed), between containers touching this block.", x0, y, cw - x0 - 6, GRAY);
-			}
+			if (rule.extras.stream().anyMatch(ex -> ex.kind == Action.Kind.MOVE))
+				y = drawWrapped(g, "Moves one item every 8 ticks (hopper speed), between containers touching this block, every check while the rule is true.", x0, y, cw - x0 - 6, GRAY);
+			if (rule.extras.stream().anyMatch(ex -> ex.kind != Action.Kind.MOVE))
+				y = drawWrapped(g, "Counter and timer actions run once each time the rule becomes true. Counters and timers belong to this block; saving starts them over.", x0, y, cw - x0 - 6, GRAY);
 			String warn = dustWarning(rule);
 			if (warn != null) { g.text(font, font.plainSubstrByWidth(warn, cw - x0 - 6), x0, y, GOLD); y += 12; }
 		}
@@ -520,11 +593,26 @@ public final class LogicScreen extends Screen {
 	static String sideLabel(Side s) { return s == Side.ANY ? "Any side" : s.label(); }
 
 	static String kindLabel(Condition.Kind k) {
-		return switch (k) { case BLOCK -> "Block"; case SIGNAL -> "Signal"; case ITEMS -> "Items"; case PLAYERS -> "Players"; case CHANGE -> "Change"; };
+		return switch (k) { case BLOCK -> "Block"; case SIGNAL -> "Signal"; case ITEMS -> "Items"; case PLAYERS -> "Players"; case CHANGE -> "Change";
+			case COUNTER -> "Counter"; case TIMER -> "Timer"; };
 	}
 
 	static String actionLabel(Action.Kind k) {
-		return switch (k) { case SET -> "Output"; case PULSE -> "Pulse"; case TOGGLE -> "Toggle"; case KEEP -> "Keep"; case MOVE -> "Move"; };
+		return switch (k) { case SET -> "Output"; case PULSE -> "Pulse"; case TOGGLE -> "Toggle"; case KEEP -> "Keep"; default -> extraLabel(k); };
+	}
+
+	static String extraLabel(Action.Kind k) {
+		return switch (k) { case MOVE -> "Move"; case ADD -> "Add"; case SUBTRACT -> "Subtract"; case SET_COUNTER -> "Set"; case START -> "Start";
+			case STOP -> "Stop"; default -> actionLabel(k); };
+	}
+
+	/** Short text for an extra action in the rule list: "move diamond", "A+1", "A-1", "A=0", "start T1", "stop T1". */
+	static String extraSummary(Draft.Extra ex) {
+		String id = Condition.memoryLabel(ex.id);
+		return switch (ex.kind) {
+			case ADD -> id + "+" + ex.amount; case SUBTRACT -> id + "-" + ex.amount; case SET_COUNTER -> id + "=" + ex.amount;
+			case START -> "start " + id; case STOP -> "stop " + id; default -> "move " + ex.id;
+		};
 	}
 
 	/** Short text for the rule list, e.g. "north is red_wool -> 15" or "always: move diamond". */
@@ -538,19 +626,21 @@ public final class LogicScreen extends Screen {
 				case SIGNAL -> "sig " + (c.side == Side.ANY ? "any" : c.side.label().toLowerCase(Locale.ROOT)) + " " + c.op.symbol + c.number;
 				case ITEMS -> c.id + " " + c.op.symbol + c.number;
 				case PLAYERS -> "players " + c.op.symbol + c.number;
-				case CHANGE -> (c.side == Side.ANY ? "any" : c.side.label().toLowerCase(Locale.ROOT)) + (c.turnsOn() ? " on" : " off");
-			});
+					case CHANGE -> (c.side == Side.ANY ? "any" : c.side.label().toLowerCase(Locale.ROOT)) + (c.turnsOn() ? " on" : " off");
+					case COUNTER -> Condition.memoryLabel(c.id) + c.op.symbol + c.number;
+					case TIMER -> Condition.memoryLabel(c.id) + (c.op == Condition.Op.IS ? " " : " not ") + (c.running() ? "running" : "done");
+				});
 		}
 		if (r.conditions.isEmpty()) sb.append("always");
 		if (output) {
 			sb.append(" -> ").append(switch (r.action) {
-				case SET -> r.strength; case PULSE -> "pulse " + r.strength; case TOGGLE -> "toggle " + r.strength; case KEEP -> "keep"; case MOVE -> "?";
-			});
-			if (!r.moves.isEmpty()) sb.append(" + move");
-		} else {
-			sb.append(": move ");
-			for (int i = 0; i < r.moves.size(); i++) sb.append(i == 0 ? "" : ", ").append(r.moves.get(i).id);
-		}
+					case SET -> r.strength; case PULSE -> "pulse " + r.strength; case TOGGLE -> "toggle " + r.strength; case KEEP -> "keep"; default -> "?";
+				});
+				for (Draft.Extra ex : r.extras) sb.append(", ").append(extraSummary(ex));
+			} else {
+				sb.append(": ");
+				for (int i = 0; i < r.extras.size(); i++) sb.append(i == 0 ? "" : ", ").append(extraSummary(r.extras.get(i)));
+			}
 		return sb.toString();
 	}
 }

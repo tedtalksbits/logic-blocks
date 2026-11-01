@@ -1,4 +1,4 @@
-# Client <-> server protocol (v2)
+# Client <-> server protocol (v3)
 
 Plugin messages on `logicblocks:*` channels. Encoding is Minecraft's `FriendlyByteBuf` style: VarInt, big-endian
 Int32, Bool (1 byte), String (VarInt byte length + UTF-8), Bytes (VarInt length + raw). Both sides use
@@ -16,13 +16,17 @@ Int32, Bool (1 byte), String (VarInt byte length + UTF-8), Bytes (VarInt length 
 | `logicblocks:query` | C->S | Int32 x, y, z (since plugin 0.2.0 / client 0.3.0) |
 | `logicblocks:is` | S->C | Int32 x, y, z, Bool is a Logic Block |
 
-Protocol 2 (plugin 0.3.0, client 0.4.0) carries program format 2; protocol 1 carried format 1.
+Protocol 3 (plugin 0.4.0, client 0.5.0) carries program format 3 and snapshots with counters and timers. Protocol 2
+(plugin 0.3.0, client 0.4.0) carried program format 2; protocol 1 carried format 1.
 
-**Program** (`Program.encode`, format 2): VarInt format (2), the If/Else rules, the "otherwise" action, the When
+**Program** (`Program.encode`, format 3): VarInt format (3), the If/Else rules, the "otherwise" action, the When
 rules. Rules: VarInt count (0-8), for each rule: VarInt condition count (0-3), each condition = VarInt kind, VarInt
 side, VarInt op, String id, VarInt number, VarInt number2; then VarInt action count (1-3), each action = VarInt kind,
 VarInt strength, VarInt ticks, String id, VarInt from side, VarInt to side. Enum values are ordinals of
-`Condition.Kind`, `Side`, `Condition.Op`, `Action.Kind`; append new values at the end only.
+`Condition.Kind`, `Side`, `Condition.Op`, `Action.Kind`; append new values at the end only. Format 3 has the same
+layout as format 2 and adds the kinds COUNTER and TIMER (conditions: id "a" to "d" or "t1" to "t4"; a timer's number
+is 0 done, 1 running) and ADD, SUBTRACT, SET_COUNTER, START, STOP (actions: id the counter or timer, strength the
+amount or value, ticks the timer length). `Program.decode` reads formats 1, 2 and 3.
 
 Format 1 (v1): VarInt format (1), rules as above but each with exactly one action written as VarInt kind, VarInt
 strength, VarInt ticks; then the "otherwise" action in the same short form; no When rules. `Program.decode` reads
@@ -30,7 +34,9 @@ both, for blocks and items saved by v1.
 
 **Snapshot** (`Snapshot.encode`): for each side in order north, east, south, west, up, down: String block id,
 VarInt signal, Bool has container, and if so VarInt n + n x (String item id, VarInt count). Then VarInt player
-count + each distance in tenths of a block, VarInt current output, VarInt (matched rule + 1).
+count + each distance in tenths of a block, VarInt current output, VarInt (matched rule + 1), then (since protocol
+3) 4 x VarInt counter A to D, 4 x VarInt ticks left on timer T1 to T4 (0: not running), VarInt timers done at the
+last check (bit per timer).
 
 ## Behaviour
 

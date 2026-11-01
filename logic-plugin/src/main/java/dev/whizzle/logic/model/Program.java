@@ -15,8 +15,11 @@ import java.util.Objects;
  * A rule with no conditions always holds.
  */
 public record Program(List<Rule> rules, Action otherwise, List<Rule> also) {
-    /** Stored format: 1 = v1 (output rules with one action each), 2 = v2 (actions lists, also rules, move). */
-    public static final int FORMAT = 2;
+    /**
+     * Stored format: 1 = v1 (output rules with one action each), 2 = v2 (actions lists, also rules, move), 3 = counters
+     * and timers (same layout as 2, new kinds; a plugin that only knows 2 refuses it instead of misreading it).
+     */
+    public static final int FORMAT = 3;
     public static final int MAX_RULES = 8, MAX_ALSO = 8, MAX_CONDITIONS = 3, MAX_ACTIONS = 3, MAX_BYTES = 8192;
 
     public record Rule(List<Condition> conditions, List<Action> actions) {
@@ -110,7 +113,7 @@ public record Program(List<Rule> rules, Action otherwise, List<Rule> also) {
         }
     }
 
-    /** Reads format 2, and format 1 (v1 blocks and items), which becomes the same output rules with no "also" rules. */
+    /** Reads formats 2 and 3, and format 1 (v1 blocks and items), which becomes the same output rules with no "also" rules. */
     public static Program decode(byte[] data) {
         if (data.length > MAX_BYTES) throw new IllegalArgumentException("Program too large");
         Wire.Reader in = new Wire.Reader(data);
@@ -120,7 +123,7 @@ public record Program(List<Rule> rules, Action otherwise, List<Rule> also) {
                 List<Rule> rules = readRules(in, MAX_RULES, true);
                 yield new Program(rules, Action.readV1(in));
             }
-            case 2 -> {
+            case 2, 3 -> {
                 List<Rule> rules = readRules(in, MAX_RULES, false);
                 Action otherwise = Action.read(in);
                 yield new Program(rules, otherwise, readRules(in, MAX_ALSO, false));
