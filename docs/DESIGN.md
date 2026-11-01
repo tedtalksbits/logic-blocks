@@ -42,10 +42,12 @@ part of a dust line's power is its own.
   clocks instead of oscillating every tick. Desired output is never dropped, only delayed.
 - The output is re-applied if something else changed the block's power.
 
-## Rules v2: output and "also"
+## Rules v2: If/Else and When
 
-A program has two lists. **Output** rules work as in v1: the first true rule's first action sets the output
-(*if / else if / else*). **Also** rules all run when true, every check (independent statements). Before v2, a rule
+A program has two lists, the editor's two tabs (in code: `rules` and `also`). **If/Else** rules work as in v1: the
+first true rule's first action sets the output (*if / else if / else*). **When** rules all run when true, every check
+(independent `if` statements): one winner versus every true rule. The tabs were first called Output and Also; the
+owner chose If/Else and When because they say how each list is evaluated. Before v2, a rule
 that moved items would have had to win "first match" against the rules setting the output; two lists avoid that
 clash, and read like code a programmer knows. Rules hold up to 3 actions; only an output rule's first action is an
 output, the rest act on the world (`Engine.worldActions` lists them in order). A rule with no conditions always
@@ -55,7 +57,7 @@ holds.
 not stored: after a restart nothing "turns on" at the first check). Checks every 2 ticks catch an observer's
 2-tick pulse.
 
-**Format 2** (`Program.FORMAT`) adds the actions lists, the "also" list and the move fields. `Program.decode` still
+**Format 2** (`Program.FORMAT`) adds the actions lists, the When list and the move fields. `Program.decode` still
 reads format 1, so v1 blocks and items load unchanged and are saved as format 2 the next time they change. The
 protocol went to 2 with it: an older client says it needs updating instead of misreading rules.
 
@@ -84,6 +86,10 @@ If the block at a stored position isn't a daylight detector anymore (WorldEdit, 
 with a log line. Pistons can't move Logic Blocks and explosions don't destroy them.
 
 The item carries the program too (`logicblocks:program` on the item), so breaking and placing keeps the rules.
+
+**Pick block** (middle-click) would pick a plain daylight detector, since that's what the block is. `PickBlock`
+handles Paper's `PlayerPickBlockEvent`: it picks a Logic Block item (one with the same rules first), never a plain
+detector; in creative it hands out a blank Logic Block, or with Ctrl a copy carrying the block's rules.
 
 ## Side labels
 

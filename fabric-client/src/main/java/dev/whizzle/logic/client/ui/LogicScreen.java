@@ -18,8 +18,8 @@ import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
- * The rule editor. Left: two tabs, the <b>Output</b> rules (first match sets the output; the one matching right now is
- * green) with "otherwise", and the <b>Also</b> rules (every true one runs). Right: the selected rule's conditions, each
+ * The rule editor. Left: two tabs, the <b>If/Else</b> rules (the first true one sets the output; the one matching right
+ * now is green) with "otherwise", and the <b>When</b> rules (every true one runs). Right: the selected rule's conditions, each
  * with what the block sees right now and true/false, then what it does: an output, and moves. Edits are checked live
  * against what the block sees, before saving.
  */
@@ -83,9 +83,9 @@ public final class LogicScreen extends Screen {
 
 		// Tabs: Output | Also
 		int half = (listW - 2) / 2;
-		addRenderableWidget(Button.builder(tabText("Output", draft.rules.size(), !alsoTab), b -> { alsoTab = false; rebuildWidgets(); })
+		addRenderableWidget(Button.builder(tabText("If/Else", draft.rules.size(), !alsoTab), b -> { alsoTab = false; rebuildWidgets(); })
 			.pos(6, 26).size(half, 16).build());
-		addRenderableWidget(Button.builder(tabText("Also", draft.also.size(), alsoTab), b -> { alsoTab = true; rebuildWidgets(); })
+		addRenderableWidget(Button.builder(tabText("When", draft.also.size(), alsoTab), b -> { alsoTab = true; rebuildWidgets(); })
 			.pos(6 + half + 2, 26).size(half, 16).build());
 
 		// Rule list for the tab
@@ -103,7 +103,7 @@ public final class LogicScreen extends Screen {
 		if (list.isEmpty()) y += 4;
 		int cy = Math.max(y + 2, 46);
 		int max = alsoTab ? Program.MAX_ALSO : Program.MAX_RULES;
-		Button add = addRenderableWidget(Button.builder(Component.literal(alsoTab ? "+ Also" : "+ Rule"), b -> {
+		Button add = addRenderableWidget(Button.builder(Component.literal(alsoTab ? "+ When" : "+ Rule"), b -> {
 			list.add(alsoTab ? Draft.Rule.also() : new Draft.Rule()); select(list.size() - 1); changed();
 		}).pos(6, cy).size(46, 18).build());
 		add.active = edit && list.size() < max;
@@ -357,13 +357,13 @@ public final class LogicScreen extends Screen {
 		List<Draft.Rule> list = list();
 		if (list.isEmpty()) {
 			String hint = alsoTab
-				? "No \"also\" rules. Every true one runs, every check, alongside the output rules: for moving items."
-				: "No rules yet. \"+ Rule\" adds one: when something is true, set the output. The first true rule wins.";
+				? "When rules: every true one runs, every check, alongside If/Else. For moving items. \"+ When\" adds one."
+				: "If/Else rules: the first true one sets the output, \"Otherwise\" covers the rest. \"+ Rule\" adds one.";
 			drawWrapped(g, hint, x0, 30, width - x0 - 8, GRAY);
 		} else {
 			Draft.Rule rule = list.get(sel());
 			boolean now = alsoTab ? allTrue(rule) : draftMatched() == sel();
-			String title = (alsoTab ? "Also " : "Rule ") + (sel() + 1) + (now ? (alsoTab ? "  (true: runs now)" : "  (true right now)") : "")
+			String title = (alsoTab ? "When rule " : "Rule ") + (sel() + 1) + (now ? (alsoTab ? "  (true: runs now)" : "  (true right now)") : "")
 				+ (alsoTab && rule.conditions.isEmpty() ? "  (no conditions: always)" : "");
 			g.text(font, title, x0, 30, now ? GREEN : WHITE);
 			int y = 42;

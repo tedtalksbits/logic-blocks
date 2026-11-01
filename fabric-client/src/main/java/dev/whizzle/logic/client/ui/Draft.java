@@ -132,7 +132,7 @@ public final class Draft {
 			if (problem != null) return new Built(null, problem);
 		}
 		for (int r = 0; r < also.size(); r++) {
-			String problem = buildRule(also.get(r), false, "Also " + (r + 1) + ": ", outAlso, knownBlock, knownItem);
+			String problem = buildRule(also.get(r), false, "When rule " + (r + 1) + ": ", outAlso, knownBlock, knownItem);
 			if (problem != null) return new Built(null, problem);
 		}
 		Program p = new Program(out, otherwiseKeep ? Action.keep() : Action.set(parse(otherwiseStrength)), outAlso);

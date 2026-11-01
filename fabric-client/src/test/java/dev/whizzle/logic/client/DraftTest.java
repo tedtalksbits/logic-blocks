@@ -101,10 +101,10 @@ class DraftTest {
 		assertEquals(Program.EMPTY.withAlso(List.of(new Program.Rule(List.of(), Action.move("diamond", Side.UP, Side.DOWN)))), build(d).program());
 
 		station.moves.clear();
-		assertEquals("Also 1: add something for it to do (+ Move)", build(d).problem());
+		assertEquals("When rule 1: add something for it to do (+ Move)", build(d).problem());
 		station.moves.add(new Draft.Move());
 		station.moves.get(0).id = "diamondd";
-		assertEquals("Also 1: no item called \"diamondd\"", build(d).problem());
+		assertEquals("When rule 1: no item called \"diamondd\"", build(d).problem());
 		station.moves.get(0).id = "diamond";
 		station.moves.get(0).to = Side.UP;
 		assertTrue(build(d).problem().contains("different side"));

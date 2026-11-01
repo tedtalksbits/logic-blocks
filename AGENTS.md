@@ -24,11 +24,11 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - Client: 6 unit tests pass. Exercised end to end in real **26.2** and **26.3** games; on 26.3 (client 0.2.0, Paper
   26.3-211) the owner ran every `docs/TEST_PLAN.md` test and all passed.
 - CI (GitHub Actions) green from its first run: plugin, client, real-Paper 26.3 self-test.
-- **Rules v2** (plugin 0.3.0, client 0.4.0, protocol 2, program format 2): Output and Also rule lists, up to 3 actions
+- **Rules v2** (plugin 0.3.0, client 0.4.0, protocol 2, program format 2): If/Else and When rule lists (code: `rules`, `also`), up to 3 actions
   per rule, Change (turns on/off) condition, Move items action under the five rules (`docs/DESIGN.md`). Self-test on
   real Paper: moves at exactly hopper speed, only the named item, furnace faces, protection event, turns on counts a
   held press once. The **editor** (tabs, move rows) is unit-tested and mocked but **not yet seen in a real game**
-  (`docs/TEST_PLAN.md` tests 26-36).
+  (`docs/TEST_PLAN.md` tests 26-39).
 - v2 sorter: one Logic Block per station (`/logic demo sorter`, `Demos.moveSorter`): no wrong items even at double
   feed speed. The v1 two-block redstone sorter stays as `/logic demo redstone-sorter`.
 - v1 item sorter build (`docs/SORTER.md`, pictures in `docs/images/` drawn by scripts, not game screenshots):
@@ -45,7 +45,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 1. v2 step 3: timers ("every N ticks") and counters (private per block: add, subtract, reset, compare); showcase:
    combination lock demo. Step 4: copy and paste rules between Logic Blocks, and presets. Later: shared variables,
    wireless links.
-2. The owner's real-game check of the v2 editor (tests 26-36).
+2. The owner's real-game check of the v2 editor (tests 26-39).
 3. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
 
 ## Decisions already made (don't reopen without asking)
@@ -66,7 +66,9 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | Sides shown by labels the mod draws, not a texture | Owner wants no visual change to any vanilla block; a texture would hit every daylight detector |
 | Labels on by default, toggle key N, N/E/S/W only | Owner's call |
 | Actions beyond redstone are allowed if they pass the **five rules** (`docs/DESIGN.md`): only what vanilla can do, touching blocks only, no faster than vanilla, nothing from nothing, respects protection | Owner agreed (the goal is intuitive, programming-friendly redstone, not purity) |
-| Rules v2 model: Output list (first match) + Also list (all true run); counters private per block | Owner: "that's clear", "private" |
+| Rules v2 model: If/Else list (first match) + When list (all true run); counters private per block | Owner: "that's clear", "private"; tab names chosen by the owner |
+| Middle-click a Logic Block picks a Logic Block, never a plain detector; creative gives one, Ctrl copies its rules | Owner asked for the fix |
+| No custom block or item: Paper can't add either; a Fabric server would mean everyone installs the mod | Owner checked; the side labels, pick fix and query exist because of this |
 | v2 order: engine + move items, then timers/counters, then copy/paste + presets | Owner agreed |
 | Release tag = plugin version; the client keeps its own version; both jars in each release | Same as Blueprints (owner's call) |
 | Label look is a per-player client setting with an in-screen preview; no server-wide off switch | Owner: visual preferences belong to the player; players can't look around while in a menu |

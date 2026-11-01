@@ -77,7 +77,7 @@ class DemosTest {
         LogicManager m = plugin.manager();
         assertEquals(2, m.nodes().size());
         assertEquals(Demos.moveStation(Material.DIAMOND_SWORD), m.at(world.getBlockAt(3, 71, 3)).orElseThrow().program());
-        assertEquals(List.of("otherwise -> output 0", "also 1. always -> move diamond from up to down"),
+        assertEquals(List.of("otherwise -> output 0", "when rules (every true one runs):", "1. always -> move diamond from up to down"),
             Demos.moveStation(Material.DIAMOND).describe());
         assertEquals(Material.CHEST, world.getBlockAt(4, 72, 3).getType(), "overflow");
         assertTrue(Demos.inventory(world.getBlockAt(1, 73, 3)).contains(Material.DIAMOND_SWORD), "stocked");

@@ -18,14 +18,14 @@ Int32, Bool (1 byte), String (VarInt byte length + UTF-8), Bytes (VarInt length 
 
 Protocol 2 (plugin 0.3.0, client 0.4.0) carries program format 2; protocol 1 carried format 1.
 
-**Program** (`Program.encode`, format 2): VarInt format (2), the output rules, the "otherwise" action, the "also"
+**Program** (`Program.encode`, format 2): VarInt format (2), the If/Else rules, the "otherwise" action, the When
 rules. Rules: VarInt count (0-8), for each rule: VarInt condition count (0-3), each condition = VarInt kind, VarInt
 side, VarInt op, String id, VarInt number, VarInt number2; then VarInt action count (1-3), each action = VarInt kind,
 VarInt strength, VarInt ticks, String id, VarInt from side, VarInt to side. Enum values are ordinals of
 `Condition.Kind`, `Side`, `Condition.Op`, `Action.Kind`; append new values at the end only.
 
 Format 1 (v1): VarInt format (1), rules as above but each with exactly one action written as VarInt kind, VarInt
-strength, VarInt ticks; then the "otherwise" action in the same short form; no "also" rules. `Program.decode` reads
+strength, VarInt ticks; then the "otherwise" action in the same short form; no When rules. `Program.decode` reads
 both, for blocks and items saved by v1.
 
 **Snapshot** (`Snapshot.encode`): for each side in order north, east, south, west, up, down: String block id,

@@ -54,7 +54,7 @@ class RulesV2Test {
         Program twoOutputs = new Program(List.of(rule(List.of(Action.set(1), Action.set(2)))), Action.set(0));
         assertTrue(twoOutputs.problem().contains("only the first action sets the output"));
         Program alsoOutput = Program.EMPTY.withAlso(List.of(rule(List.of(Action.set(3)))));
-        assertTrue(alsoOutput.problem().startsWith("Also 1: \"also\" rules don't set the output"), alsoOutput.problem());
+        assertTrue(alsoOutput.problem().startsWith("When rule 1: \"when\" rules don't set the output"), alsoOutput.problem());
         Program sameSide = Program.EMPTY.withAlso(List.of(rule(List.of(Action.move("coal", Side.UP, Side.UP)))));
         assertTrue(sameSide.problem().contains("different side"));
         Program noSide = Program.EMPTY.withAlso(List.of(rule(List.of(Action.move("coal", Side.ANY, Side.UP)))));
@@ -123,6 +123,7 @@ class RulesV2Test {
         assertEquals(List.of(
             "1. when signal west turns on -> toggle 15, then move coal from north to down",
             "otherwise -> keep output",
-            "also 1. always -> move diamond from up to down"), p.describe());
+            "when rules (every true one runs):",
+            "1. always -> move diamond from up to down"), p.describe());
     }
 }

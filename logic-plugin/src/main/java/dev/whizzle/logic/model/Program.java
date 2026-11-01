@@ -6,10 +6,11 @@ import java.util.Objects;
 
 /**
  * A Logic Block's rules, in two lists:
+ * In the editor they're the <b>If/Else</b> and <b>When</b> tabs.
  * <ul>
- *   <li>{@code rules}, the <b>output</b> rules: the first rule whose conditions all hold decides the output (its first
+ *   <li>{@code rules}, the <b>output</b> (If/Else) rules: the first rule whose conditions all hold decides the output (its first
  *       action is an output action; any further actions run too), otherwise {@code otherwise}. Like if / else if / else.</li>
- *   <li>{@code also}: every rule whose conditions all hold runs its actions, every check. None of them sets the output.</li>
+ *   <li>{@code also}, the <b>When</b> rules: every rule whose conditions all hold runs its actions, every check. None of them sets the output.</li>
  * </ul>
  * A rule with no conditions always holds.
  */
@@ -60,14 +61,14 @@ public record Program(List<Rule> rules, Action otherwise, List<Rule> also) {
     /** Null when the program can run, otherwise the first problem, naming the rule. */
     public String problem() {
         if (rules.size() > MAX_RULES) return "At most " + MAX_RULES + " output rules";
-        if (also.size() > MAX_ALSO) return "At most " + MAX_ALSO + " \"also\" rules";
+        if (also.size() > MAX_ALSO) return "At most " + MAX_ALSO + " \"when\" rules";
         for (int r = 0; r < rules.size(); r++) {
             String p = ruleProblem(rules.get(r), true);
             if (p != null) return "Rule " + (r + 1) + ": " + p;
         }
         for (int r = 0; r < also.size(); r++) {
             String p = ruleProblem(also.get(r), false);
-            if (p != null) return "Also " + (r + 1) + ": " + p;
+            if (p != null) return "When rule " + (r + 1) + ": " + p;
         }
         if (otherwise.kind() != Action.Kind.SET && otherwise.kind() != Action.Kind.KEEP) return "Otherwise can only set an output or keep it";
         String p = otherwise.problem();
@@ -84,7 +85,7 @@ public record Program(List<Rule> rules, Action otherwise, List<Rule> also) {
         for (int i = 0; i < rule.actions().size(); i++) {
             Action a = rule.actions().get(i);
             if (output && i == 0 && !a.kind().output()) return "the first action sets the output (output, pulse, toggle or keep)";
-            if (a.kind().output() && (!output || i > 0)) return output ? "only the first action sets the output" : "\"also\" rules don't set the output; use the output rules";
+            if (a.kind().output() && (!output || i > 0)) return output ? "only the first action sets the output" : "\"when\" rules don't set the output; use the If/Else rules";
             String p = a.problem();
             if (p != null) return p;
         }
@@ -153,7 +154,8 @@ public record Program(List<Rule> rules, Action otherwise, List<Rule> also) {
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < rules.size(); i++) lines.add((i + 1) + ". " + rules.get(i).describe());
         lines.add("otherwise -> " + otherwise.describe());
-        for (int i = 0; i < also.size(); i++) lines.add("also " + (i + 1) + ". " + also.get(i).describe());
+        if (!also.isEmpty()) lines.add("when rules (every true one runs):");
+        for (int i = 0; i < also.size(); i++) lines.add((i + 1) + ". " + also.get(i).describe());
         return lines;
     }
 }

@@ -51,18 +51,22 @@ Logic Block items keep their rules: v1 programs are read and upgraded automatica
 ([docs/SORTER.md](docs/SORTER.md); operators can have it built for them with `/logic demo sorter`).
 
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
+**Middle-click** on a Logic Block picks a Logic Block from your inventory (one with the same rules if you have it),
+never a plain daylight detector; in creative it gives you one, and **Ctrl + middle-click** gives a copy with that
+block's rules.
 
 ### Rule reference
 
 A Logic Block has two lists of rules, on two tabs in the editor:
 
-- **Output**: the first rule whose conditions are all true sets the redstone output (like *if / else if / else*),
+- **If/Else**: the first rule whose conditions are all true sets the redstone output (*if / else if / else*),
   and *otherwise* covers the rest. Up to 8 rules.
-- **Also**: *every* rule whose conditions are all true runs, every check, alongside the output rules. Up to 8 rules.
+- **When**: *every* rule whose conditions are all true runs, every check, alongside If/Else. Up to 8 rules.
   For moving items.
 
 Each rule has 0 to 3 conditions (all must be true; none means *always*) and up to 3 actions. An output rule's first
-action sets the output; the others, and all of an "also" rule's actions, are moves.
+action sets the output; the others, and all of a When rule's actions, are moves. The difference between the tabs is
+*one winner* (If/Else) versus *every true rule* (When): put several independent jobs, like one move per item, in When.
 
 | Condition | Reads | Compare |
 |---|---|---|
@@ -78,7 +82,7 @@ action sets the output; the others, and all of an "also" rule's actions, are mov
 | **Pulse** N for T ticks | when the rule starts matching, outputs N for T ticks (20 = 1 second), then 0 |
 | **Toggle** N | when the rule starts matching, flips between N and 0, and stays there |
 | **Keep** | leaves the output as it is |
-| **Move** item from side to side | moves one item (or `*` for any) from the container on one side to the container on another, every 8 ticks at most (a hopper's speed). Not an output: it goes after an output rule's output, or in an "also" rule |
+| **Move** item from side to side | moves one item (or `*` for any) from the container on one side to the container on another, every 8 ticks at most (a hopper's speed). Not an output: it goes after an If/Else rule's output, or in a When rule |
 
 *Otherwise* can output a number or **Keep**. Use Keep with Toggle and Pulse so they aren't overwritten when the
 input goes away. Example: a button feeding a repeater that points into the west side, `signal west turns on -> toggle
@@ -90,9 +94,9 @@ smelting input through their top and fuel through their sides, and give results 
 Protection plugins that stop hoppers stop it too. Examples:
 
 ```
-Also:   always -> move diamond from up to down                     a sorter station (docs/SORTER.md)
-Also:   when coal north >= 1 and coal down < 8 -> move coal from north to down     keep a furnace fuelled
-Output: when signal west turns on -> toggle 15, then move * from up to down    a latch that also empties a chest
+When:    always -> move diamond from up to down                     a sorter station (docs/SORTER.md)
+When:    coal north >= 1 and coal down < 8 -> move coal from north to down     keep a furnace fuelled
+If/Else: signal west turns on -> toggle 15, then move * from up to down    a latch that also empties a chest
 ```
 
 ### Good to know

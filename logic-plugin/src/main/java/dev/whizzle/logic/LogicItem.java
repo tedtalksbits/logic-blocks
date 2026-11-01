@@ -34,7 +34,7 @@ public final class LogicItem {
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text("Logic Block", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         List<Component> lore = new ArrayList<>();
-        if (program == null || program.rules().isEmpty()) {
+        if (program == null || program.equals(Program.EMPTY)) {
             lore.add(gray("Place it, then right-click to program it."));
         } else {
             lore.add(gray("Programmed:"));

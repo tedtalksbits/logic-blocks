@@ -34,11 +34,11 @@ line, 1 wide and 4 high), with the Logic Blocks programmed and owned by you and 
 
 ```
  layer +2   [ S: hopper, facing east ]   the line: passes items to the next station
- layer +1   [ Logic Block            ]   Also: always -> Move diamond from Up to Down
+ layer +1   [ Logic Block            ]   When: always -> Move diamond from Up to Down
  layer  0   [ chest                  ]
 ```
 
-In the editor: the **Also** tab, **+ Also**, leave it without conditions ("always"), and set its move to
+In the editor: the **When** tab, **+ When**, leave it without conditions ("always"), and set its move to
 `diamond`, from **Up**, to **Down**. That's the whole station.
 
 ### How it works
@@ -48,7 +48,9 @@ In the editor: the **Also** tab, **+ Also**, leave it without conditions ("alway
 - It only ever takes diamonds, wherever they sit in the hopper, so it can't take a wrong item, however fast items
   arrive.
 - Anything else, and diamonds when the chest is full, stay in the hopper, which passes them on along the line.
-- Several items per station: one "also" rule per item (or one rule with up to three moves).
+- Several items per station: one When rule per item (or one rule with up to three moves).
+- Building many stations: program one, then Ctrl + middle-click it in creative for copies with the same rule, or
+  break and place it (it keeps its rule), and change the item.
 
 ### Measured on a real server
 
