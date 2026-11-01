@@ -27,7 +27,7 @@ public final class LogicScreen extends Screen {
 	static final int WHITE = 0xFFFFFFFF, GRAY = 0xFFB8C0CC, GREEN = 0xFF6EE07A, RED = 0xFFFF6B6B, GOLD = 0xFFFFC857, AQUA = 0xFF6FD3FF, PANEL = 0x90101418;
 	private static final int ROW = 36;
 	/** The editor is laid out in a centred column at most this wide (GUI pixels), like a page with a max width. */
-	static final int MAX_WIDTH = 640;
+	static final int MAX_WIDTH = 1080;
 	private int listW = 112;
 	/** Content width and left edge of the centred column. */
 	private int cw, left;
