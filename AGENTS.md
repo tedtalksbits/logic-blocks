@@ -64,7 +64,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 ## Open items
 
 1. Nothing planned. Later, not committed to: shared variables, wireless links, optional item texture through a resource pack.
-3. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
+2. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
 
 ## Decisions already made (don't reopen without asking)
 
