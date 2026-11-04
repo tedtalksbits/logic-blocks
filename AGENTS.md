@@ -17,7 +17,10 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   including the sorter build from `docs/SORTER.md` (four scenarios side by side, about 2 minutes).
 - `ci/` and `.github/workflows/ci.yml`: GitHub Actions (plugin, client, real-Paper self-test). See `docs/CI.md`.
 
-## Status (2026-11-01)
+## Status (2026-11-04)
+
+- **Released v0.4.0** (plugin 0.4.0, client 0.5.0): counters and timers, machines, Fill, copy/paste/presets, creative-only
+  demos. The owner playtested and released it.
 
 - v1 complete. Minecraft/Paper **26.3** (plugin also runs on 26.2: `api-version` is a minimum).
 - Plugin: 17 unit tests pass; the real-server self-test passes on Paper 26.2-130 and 26.3-211.
@@ -60,8 +63,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 
 ## Open items
 
-1. The owner's real-game check of tests 43-61, then release v0.4.0 (plugin 0.4.0, client 0.5.0).
-2. Later, not committed to: shared variables, wireless links, optional item texture through a resource pack.
+1. Nothing planned. Later, not committed to: shared variables, wireless links, optional item texture through a resource pack.
 3. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
 
 ## Decisions already made (don't reopen without asking)
