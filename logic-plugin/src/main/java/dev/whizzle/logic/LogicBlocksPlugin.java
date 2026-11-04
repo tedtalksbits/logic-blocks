@@ -5,6 +5,7 @@ import io.papermc.paper.event.server.ServerResourcesReloadedEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.*;
@@ -163,6 +164,11 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
         if (!sender.hasPermission("logicblocks.admin")) { sender.sendMessage(Component.text("You don't have permission.", NamedTextColor.RED)); return; }
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return; }
         String which = args.length < 2 ? "" : args[1].toLowerCase(java.util.Locale.ROOT);
+        // Demos place blocks and stock chests: free resources, so creative mode only, even for operators.
+        if (!which.isEmpty() && p.getGameMode() != GameMode.CREATIVE) {
+            p.sendMessage(Component.text("Demos build and stock machines for free, so they only work in creative mode.", NamedTextColor.RED));
+            return;
+        }
         if (which.equals("lock")) { demoLock(p); return; }
         Machines.Kind machine = Machines.Kind.of(which);
         if (machine != null) { demoMachine(p, machine, args); return; }

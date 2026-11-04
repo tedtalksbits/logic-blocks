@@ -12,7 +12,7 @@ on a real Paper 26.3 server and checks the results:
 | `/logic demo shulker-loader` | full shulker boxes from loose items | 3 | two boxes of 27 filled and collected, nothing leaks |
 | `/logic demo shulker-unloader` | loose items (and empty boxes) from full boxes | 3 | 3 boxes emptied, every item and every box collected |
 
-Each builds starting 2 blocks east and 2 south of you, needs a clear space (it says how much if there isn't), and is
+Each builds (in creative mode only: the demos are free resources) starting 2 blocks east and 2 south of you, needs a clear space (it says how much if there isn't), and is
 owned by you. Right-click any of its Logic Blocks to see its rules live.
 
 Two things in the rules exist for these machines: the **Fill** condition (how full a container is, 0 to 15, exactly

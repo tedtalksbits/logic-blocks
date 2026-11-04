@@ -120,6 +120,18 @@ class LogicManagerTest {
         assertEquals(n.program(), old.program());
     }
 
+    @Test void demosOnlyWorkInCreative() {
+        alex.setOp(true);
+        alex.setGameMode(GameMode.SURVIVAL);
+        int before = manager.nodes().size();
+        alex.performCommand("logic demo iron-crafter");
+        assertEquals(before, manager.nodes().size(), "nothing built in survival");
+        assertTrue(alex.nextMessage().contains("creative"));
+        alex.setGameMode(GameMode.CREATIVE);
+        alex.performCommand("logic demo iron-crafter");
+        assertEquals(before + 1, manager.nodes().size(), "built in creative");
+    }
+
     @Test void chunkEdgesAreStoredSeparately() {
         place(alex, 0, 1, 15, LogicItem.create(Program.EMPTY));
         place(alex, 15, 1, 0, LogicItem.create(redWoolProgram()));

@@ -49,7 +49,7 @@ Logic Block items keep their rules: older programs are read and upgraded automat
 6. **Save**. The block's output changes within a tick or two.
 
 **Things to build:** crafters, a super smelter and shulker loaders, each one command away ([docs/BUILDS.md](docs/BUILDS.md)); an item sorter that also sorts tools and never jams on a full chest: one Logic Block per item
-([docs/SORTER.md](docs/SORTER.md); operators can have it built for them with `/logic demo sorter`).
+([docs/SORTER.md](docs/SORTER.md); operators in creative mode can have it built for them with `/logic demo sorter`).
 
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
 **Middle-click** on a Logic Block picks a Logic Block from your inventory (one with the same rules if you have it),
@@ -170,10 +170,12 @@ If/Else: counter A = 3 -> pulse 15 for 60 ticks, then set A to 0             (ot
 | `/logic info` | everyone | Shows the rules of the Logic Block you're looking at |
 | `/logic give [player] [amount]` | operators | Gives Logic Blocks |
 | `/logic status` | operators | How many are loaded and how many editors are open |
-| `/logic demo sorter [item ...]` | operators | Builds a working, stocked item sorter next to you, one Logic Block per station ([docs/SORTER.md](docs/SORTER.md)) |
-| `/logic demo redstone-sorter [item ...]` | operators | The same with pure redstone, two Logic Blocks per station |
-| `/logic demo lock` | operators | Builds a combination lock (a counter) north of you |
-| `/logic demo iron-crafter`, `rocket-crafter [1-3]`, `super-smelter [1-8]`, `shulker-loader`, `shulker-unloader` | operators | Builds that machine next to you, stocked so it runs ([docs/BUILDS.md](docs/BUILDS.md)) |
+| `/logic demo sorter [item ...]` | operators, creative mode | Builds a working, stocked item sorter next to you, one Logic Block per station ([docs/SORTER.md](docs/SORTER.md)) |
+| `/logic demo redstone-sorter [item ...]` | operators, creative mode | The same with pure redstone, two Logic Blocks per station |
+| `/logic demo lock` | operators, creative mode | Builds a combination lock (a counter) north of you |
+| `/logic demo iron-crafter`, `rocket-crafter [1-3]`, `super-smelter [1-8]`, `shulker-loader`, `shulker-unloader` | operators, creative mode | Builds that machine next to you, stocked so it runs ([docs/BUILDS.md](docs/BUILDS.md)) |
+
+Demos only work in **creative mode**, even for operators: they build and stock machines for free.
 
 `logicblocks.use` (everyone): place Logic Blocks and edit your own. `logicblocks.admin` (operators): edit anyone's,
 `give`, `status`.

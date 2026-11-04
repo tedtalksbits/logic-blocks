@@ -84,7 +84,7 @@ rules, and to judge how it feels.
 
 ## Tests: machines (docs/BUILDS.md)
 
-Each command builds next to you (2 east, 2 south), stocked. Right-click a Logic Block in it to watch.
+Each command builds next to you (2 east, 2 south), stocked, in creative mode. Right-click a Logic Block in it to watch.
 
 | # | Do this | Expect |
 |---|---|---|
@@ -94,6 +94,7 @@ Each command builds next to you (2 east, 2 south), stocked. Right-click a Logic 
 | 54 | `/logic demo shulker-loader` | A box is placed, fills with the 27 tools in about 11 seconds, the piston breaks it and it drops into the output chest (bottom west) as a full box. A new empty box is placed. Put more items in the input chest (east end): the next box fills. |
 | 55 | `/logic demo shulker-unloader` | The 3 boxes are placed one at a time and emptied; the output chest ends up with all their items and the 3 empty boxes. |
 | 56 | In any of them, open a Logic Block | **Fill** rows show `now: fill N` (a crafter 0-9, others 0-15), matching a comparator placed against the same container. |
+| 57 | In survival (even as an operator), run any `/logic demo ...` | It refuses: demos only work in creative mode. |
 
 ## Please report
 
