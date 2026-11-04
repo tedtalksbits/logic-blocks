@@ -177,6 +177,10 @@ class DraftTest {
 		assertEquals(Condition.timer("t1", true, true), c.toCondition());
 		c.setKind(Condition.Kind.BLOCK);
 		assertEquals("red_wool", c.id, "a timer id isn't a block");
+		c.setKind(Condition.Kind.FILL);
+		assertEquals(Condition.fill(Side.NORTH, Op.EQ, 1), c.toCondition(), "fill keeps the side and a number that fits");
+		Draft round = new Draft(new Program(List.of(new Program.Rule(List.of(Condition.fill(Side.WEST, Op.GE, 9)), Action.set(15))), Action.set(0)));
+		assertEquals(Condition.fill(Side.WEST, Op.GE, 9), round.rules.get(0).conditions.get(0).toCondition());
 		assertEquals(5, Draft.ticks("0.25"));
 		assertEquals(-1, Draft.ticks("."));
 	}

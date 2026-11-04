@@ -15,7 +15,9 @@ import org.bukkit.block.data.AnaloguePowerable;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.type.RedstoneWire;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import dev.whizzle.logic.Machines;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -221,9 +223,18 @@ public final class SelfTestPlugin extends JavaPlugin {
         // 13. Counters and timers: the combination lock demo, a delayed off, a clock, a counter across a chunk reload.
         memory();
 
-        // 14. Load: many busy blocks, timed.
+        // 14. Machines (/logic demo iron-crafter, rocket-crafter, super-smelter, shulker-loader, shulker-unloader), side by side.
+        machines();
+
+        // 15. Load: many busy blocks, timed.
         steps.add(new Step("load: 400 blocks x 8 rules x 3 conditions", this::buildLoad, 4, this::measureLoad));
 
+        String only = System.getProperty("logic.selftest.only", "");
+        if (!only.isBlank()) {
+            List<String> prefixes = List.of(only.split(","));
+            steps.removeIf(st -> prefixes.stream().noneMatch(pr -> st.name().startsWith(pr.trim())));
+            report.add("INFO only steps starting with " + prefixes + " (" + steps.size() + " steps)");
+        }
         run(0);
     }
 
@@ -696,6 +707,114 @@ public final class SelfTestPlugin extends JavaPlugin {
             at(px - 2, 0).setType(Material.REDSTONE_BLOCK);
             getServer().getScheduler().runTaskLater(this, () -> at(px - 2, 0).setType(Material.AIR), 10);
         }, 16, () -> expect("wire", wire(px + 1, 0), 15)));
+    }
+
+    // ---- machines ----
+
+    /** Items in a container, including what's inside shulker box items (and how many boxes, under SHULKER_BOX). */
+    static Map<Material, Integer> deep(Block b) {
+        Map<Material, Integer> m = new TreeMap<>();
+        for (ItemStack it : inv(b).getContents()) {
+            if (it == null) continue;
+            m.merge(it.getType(), it.getAmount(), Integer::sum);
+        }
+        return m;
+    }
+
+    /** Item counts inside each shulker box item in {@code b}, one list entry per box. */
+    static List<Integer> boxCounts(Block b) {
+        List<Integer> out = new ArrayList<>();
+        for (ItemStack it : inv(b).getContents()) {
+            if (it == null || !(it.getItemMeta() instanceof org.bukkit.inventory.meta.BlockStateMeta meta) || !(meta.getBlockState() instanceof org.bukkit.block.ShulkerBox box)) continue;
+            int n = 0;
+            for (ItemStack in : box.getInventory().getContents()) if (in != null) n += in.getAmount();
+            for (int i = 0; i < it.getAmount(); i++) out.add(n);
+        }
+        return out;
+    }
+
+    void machines() {
+        int x0 = 900;   // well away from the counter-persistence chunk, so that one can unload
+        for (int c = (x0 - 8) >> 4; c <= (x0 + 72) >> 4; c++) for (int cz = -1; cz <= 1; cz++) w.setChunkForceLoaded(c, cz, true);
+        Map<Machines.Kind, Machines.Built> built = new java.util.EnumMap<>(Machines.Kind.class);
+        int[] xs = {x0, x0 + 10, x0 + 20, x0 + 40, x0 + 50};
+        Set<Integer> furnacesUsed = new TreeSet<>();
+        steps.add(new Step("machines: build all five, stocked as /logic demo does", () -> {
+            for (int x = x0 - 4; x <= x0 + 64; x++) for (int z = -4; z <= 6; z++) {
+                w.getBlockAt(x, Y - 1, z).setType(Material.STONE);
+                for (int y = Y; y < Y + 8; y++) w.getBlockAt(x, y, z).setType(Material.AIR);
+            }
+            Machines.Kind[] kinds = Machines.Kind.values();
+            for (int i = 0; i < kinds.length; i++) {
+                int n = kinds[i] == Machines.Kind.ROCKET_CRAFTER ? 3 : Machines.MAX_FURNACES;
+                if (Machines.blocked(w, xs[i], Y, 0, kinds[i], n) != null) throw new IllegalStateException(kinds[i] + " space not clear");
+                built.put(kinds[i], Machines.build(manager, w, xs[i], Y, 0, kinds[i], n, OWNER, "SelfTest"));
+            }
+            // Which furnaces get work: the smelter should spread it, not use the first few.
+            for (int t = 5; t < 600; t += 5) getServer().getScheduler().runTaskLater(this, () -> {
+                for (int i = 0; i < Machines.MAX_FURNACES; i++)
+                    if (count(w.getBlockAt(xs[2] + 1 + i, Y + 2, 0), Material.RAW_IRON) > 0) furnacesUsed.add(i);
+            }, t);
+        }, 400, () -> {
+            // Loader after 400 ticks: the first box (27 tools) is full and gone to the output chest; a new one is in place.
+            Machines.Built l = built.get(Machines.Kind.SHULKER_LOADER);
+            Block spot = w.getBlockAt(xs[3] + 1, Y + 1, 2);
+            report.add("INFO shulker loader after 400 ticks: output " + deep(l.output()) + ", boxes " + boxCounts(l.output()) + ", spot " + spot.getType()
+                + ", input " + deep(l.inputs().get(1)) + ", logic " + l.logic().stream().map(b -> manager.at(b).map(n -> n.output() + " "
+                + (n.last() == null ? "" : java.util.Arrays.deepToString(n.last().readings()))).orElse("?")).toList()
+                + ", items around " + spot.getLocation().getNearbyEntities(4, 4, 4).stream().map(e -> e.getType() + "@" + e.getLocation().getBlockX() + "," + e.getLocation().getBlockY() + "," + e.getLocation().getBlockZ()).toList()
+                + ", in the box " + (spot.getState() instanceof org.bukkit.block.ShulkerBox sb ? deep(spot) : "-") + ", feeder " + deep(l.inputs().get(0)) + ", dispenser " + deep(w.getBlockAt(xs[3] + 1, Y + 2, 2)));
+            if (!boxCounts(l.output()).equals(List.of(27))) return "expected one box of 27 in the output chest, got " + boxCounts(l.output());
+            if (!org.bukkit.Tag.SHULKER_BOXES.isTagged(spot.getType())) return "no new box placed: " + spot.getType();
+            if (count(l.inputs().get(1), null) != 0) return "input chest not empty";
+            return null;
+        }));
+        steps.add(new Step("shulker loader: 27 more tools fill a second box", () -> {
+            Inventory in = Machines.inv(built.get(Machines.Kind.SHULKER_LOADER).inputs().get(1));
+            for (int i = 0; i < 27; i++) in.setItem(i, new ItemStack(Machines.TOOLS.get((i + 1) % Machines.TOOLS.size())));
+        }, 400, () -> {
+            Machines.Built l = built.get(Machines.Kind.SHULKER_LOADER);
+            Map<Material, Integer> out = deep(l.output());
+            if (!boxCounts(l.output()).equals(List.of(27, 27))) return "expected two boxes of 27, got " + boxCounts(l.output()) + " " + out;
+            if (out.keySet().stream().anyMatch(m -> !org.bukkit.Tag.SHULKER_BOXES.isTagged(m))) return "loose items leaked into the output: " + out;
+            return null;
+        }));
+        steps.add(new Step("iron crafter: 81 ingots -> 9 iron blocks", () -> { }, 1, () -> {
+            Machines.Built b = built.get(Machines.Kind.IRON_CRAFTER);
+            Map<Material, Integer> out = deep(b.output());
+            int left = count(b.inputs().get(0), null) + count(w.getBlockAt(xs[0] + 1, Y, 0), null);
+            return out.equals(Map.of(Material.IRON_BLOCK, 9)) && left == 0 ? null : "output " + out + ", ingots left " + left;
+        }));
+        steps.add(new Step("rocket crafter: 6 paper + 18 gunpowder -> 18 flight-3 rockets", () -> { }, 1, () -> {
+            Machines.Built b = built.get(Machines.Kind.ROCKET_CRAFTER);
+            Map<Material, Integer> out = deep(b.output());
+            if (!out.equals(Map.of(Material.FIREWORK_ROCKET, 18))) return "output " + out + ", input left " + deep(b.inputs().get(0));
+            for (ItemStack it : inv(b.output()).getContents())
+                if (it != null && it.getItemMeta() instanceof org.bukkit.inventory.meta.FireworkMeta fm && fm.getPower() != 3) return "flight " + fm.getPower();
+            return null;
+        }));
+        steps.add(new Step("super smelter: 16 raw iron -> 16 iron ingots, spread over the furnaces", () -> { }, 1, () -> {
+            Machines.Built b = built.get(Machines.Kind.SUPER_SMELTER);
+            Map<Material, Integer> out = deep(b.output());
+            report.add("INFO super smelter: output " + out + ", furnaces used " + furnacesUsed);
+            if (!out.equals(Map.of(Material.IRON_INGOT, 16))) return "output " + out;
+            return furnacesUsed.size() >= 6 ? null : "only furnaces " + furnacesUsed + " got work";
+        }));
+        steps.add(new Step("shulker unloader: 3 boxes emptied, items and empty boxes out", () -> { }, 1, () -> {
+            Machines.Built b = built.get(Machines.Kind.SHULKER_UNLOADER);
+            Map<Material, Integer> out = deep(b.output());
+            report.add("INFO shulker unloader: output " + out + ", boxes " + boxCounts(b.output()));
+            Block spot = w.getBlockAt(xs[4] + 1, Y + 1, 2);
+            report.add("INFO shulker unloader: spot " + spot.getType() + ", dispenser " + deep(w.getBlockAt(xs[4] + 1, Y + 2, 2)) + ", feeder " + deep(b.inputs().get(0))
+                + ", items around " + spot.getLocation().getNearbyEntities(4, 4, 4).stream().map(e -> e.getType() + "@" + e.getLocation().getBlockX() + "," + e.getLocation().getBlockY() + "," + e.getLocation().getBlockZ()
+                + (e instanceof org.bukkit.entity.Item it ? ":" + it.getItemStack().getType() : "")).toList()
+                + ", brain " + manager.at(w.getBlockAt(xs[4] + 2, Y + 1, 2)).map(n -> n.output()).orElse(-9));
+            Map<Material, Integer> want = new TreeMap<>();
+            for (int i = 0; i < 3; i++) for (int t = 0; t < 6; t++) want.merge(Machines.TOOLS.get((t + i) % Machines.TOOLS.size()), 1, Integer::sum);
+            want.put(Material.COBBLESTONE, 24); want.put(Material.OAK_LOG, 24); want.put(Material.SHULKER_BOX, 3);
+            if (!out.equals(want)) return "output " + out + ", expected " + want;
+            return boxCounts(b.output()).equals(List.of(0, 0, 0)) ? null : "boxes not empty: " + boxCounts(b.output());
+        }));
     }
 
     void buildLoad() {

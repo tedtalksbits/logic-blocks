@@ -82,6 +82,19 @@ rules, and to judge how it feels.
 | 49 | Leave test 46's block at A = 2, restart the server | Still A = 2 (one more press turns it on). Save the rules again: A is back to 0. Break and place it: A is 0. |
 | 50 | Old client (0.4.0) on the new server | Right-clicking says the mod needs updating. |
 
+## Tests: machines (docs/BUILDS.md)
+
+Each command builds next to you (2 east, 2 south), stocked. Right-click a Logic Block in it to watch.
+
+| # | Do this | Expect |
+|---|---|---|
+| 51 | `/logic demo iron-crafter` | Within about 35 seconds the chest in front of the crafter has 9 iron blocks and the top chest is empty. Put more ingots in the top chest: more blocks. |
+| 52 | `/logic demo rocket-crafter`, then `/logic demo rocket-crafter 1` somewhere else | 18 rockets of flight duration 3 (tooltip), then 18 of flight 1 from the second. |
+| 53 | `/logic demo super-smelter` | Raw iron spreads over the furnaces (most of the 8 light up), 16 iron ingots end up in the chest at the bottom east end. Put 64 raw iron in the top chest: all 8 furnaces work. |
+| 54 | `/logic demo shulker-loader` | A box is placed, fills with the 27 tools in about 11 seconds, the piston breaks it and it drops into the output chest (bottom west) as a full box. A new empty box is placed. Put more items in the input chest (east end): the next box fills. |
+| 55 | `/logic demo shulker-unloader` | The 3 boxes are placed one at a time and emptied; the output chest ends up with all their items and the 3 empty boxes. |
+| 56 | In any of them, open a Logic Block | **Fill** rows show `now: fill N` (a crafter 0-9, others 0-15), matching a comparator placed against the same container. |
+
 ## Please report
 
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the
@@ -96,8 +109,10 @@ recipe cost.
 3. **Only the owner (and operators) can edit.** Set `editing: anyone` in `config.yml` to open it up.
 4. **Sides are compass directions.** The mod now labels them (tests 15-20). Players without the mod still use F3.
 5. **Moving items is hopper speed:** one item per 8 ticks per Logic Block, only between touching containers.
-6. **Counters and timers are per block and start over when you save or break it.** Their actions run once each time
+6. **Machines run at hopper speed** (one item per 8 ticks per Logic Block): a shulker loader takes about 11 minutes for
+   a box of full stacks, like a one-hopper vanilla loader. docs/BUILDS.md has the numbers.
+7. **Counters and timers are per block and start over when you save or break it.** Their actions run once each time
    the rule becomes true; changes show at the next check (2 ticks). See README, "Counters and timers".
    Timers, counters, copy and paste, and presets come next; variables and wireless links later.
-7. **Side labels are on by default, toggled with N.** Only players with the mod see them, and only on the block
+8. **Side labels are on by default, toggled with N.** Only players with the mod see them, and only on the block
    under the crosshair. Their look is each player's own setting (`/logicblocks`); there is no server-wide switch.

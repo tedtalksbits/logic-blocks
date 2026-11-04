@@ -24,6 +24,8 @@ class EngineTest {
             return id.equals("*") ? c.values().stream().mapToInt(i -> i).sum() : c.getOrDefault(id, 0);
         }
         public int players(int r) { return (int) Arrays.stream(players).filter(d -> d <= r).count(); }
+        final Map<Side, Integer> fills = new EnumMap<>(Side.class);
+        public int fill(Side s) { return fills.getOrDefault(s, -1); }
     }
 
     static Program.Rule rule(Action a, Condition... cs) { return new Program.Rule(List.of(cs), a); }

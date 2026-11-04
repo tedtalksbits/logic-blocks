@@ -7,20 +7,30 @@ import java.util.*;
  * evaluate the rules being edited (with the same Engine) and show live true/false before saving.
  */
 public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>> containers, int[] playerDistances,
-                       int output, int matched, int[] counters, int[] timersLeft, int timerDone) implements Engine.Inputs {
+                       int output, int matched, int[] counters, int[] timersLeft, int timerDone, int[] fills) implements Engine.Inputs {
     public static final int MAX_ITEM_TYPES = 64, MAX_PLAYERS = 64;
 
     /** Without memory: counters 0, no timers running. */
     public Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>> containers, int[] playerDistances, int output, int matched) {
-        this(blocks, signals, containers, playerDistances, output, matched, new int[Condition.COUNTERS], new int[Condition.TIMERS], 0);
+        this(blocks, signals, containers, playerDistances, output, matched, new int[Condition.COUNTERS], new int[Condition.TIMERS], 0, noFills());
     }
+
+    /** Fill per side unknown: -1 everywhere (no container). */
+    public static int[] noFills() { int[] a = new int[6]; java.util.Arrays.fill(a, -1); return a; }
+
+    /** This snapshot with each side's fill level (-1: no container). */
+    public Snapshot withFills(int[] fills) {
+        return new Snapshot(blocks, signals, containers, playerDistances, output, matched, counters, timersLeft, timerDone, fills.clone());
+    }
+
+    @Override public int fill(Side side) { return side == Side.ANY ? -1 : fills[side.ordinal()]; }
 
     /** This snapshot with the block's memory (counters, timers) as of {@code tick}. */
     public Snapshot withMemory(Engine.State state, long tick) {
         int[] c = state.counters.clone(), t = new int[Condition.TIMERS];
         Engine.Inputs mem = state.over(this, tick);
         for (int i = 0; i < t.length; i++) t[i] = mem.timerLeft(i);
-        return new Snapshot(blocks, signals, containers, playerDistances, output, matched, c, t, state.timerDone);
+        return new Snapshot(blocks, signals, containers, playerDistances, output, matched, c, t, state.timerDone, fills);
     }
 
     @Override public int counter(int i) { return counters[i]; }
@@ -69,7 +79,9 @@ public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>
         out.varInt(output).varInt(matched + 1);
         for (int c : counters) out.varInt(c);
         for (int t : timersLeft) out.varInt(t);
-        return out.varInt(timerDone).bytes();
+        out.varInt(timerDone);
+        for (int f : fills) out.varInt(f + 1);
+        return out.bytes();
     }
 
     public static Snapshot decode(Wire.Reader in) {
@@ -95,7 +107,10 @@ public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>
         int[] counters = new int[Condition.COUNTERS], timers = new int[Condition.TIMERS];
         for (int i = 0; i < counters.length; i++) counters[i] = in.varInt();
         for (int i = 0; i < timers.length; i++) timers[i] = in.varInt();
-        return new Snapshot(blocks, signals, containers, distances, output, matched, counters, timers, in.varInt());
+        int done = in.varInt();
+        int[] fills = new int[6];
+        for (int i = 0; i < 6; i++) fills[i] = Math.clamp(in.varInt() - 1, -1, 15);
+        return new Snapshot(blocks, signals, containers, distances, output, matched, counters, timers, done, fills);
     }
 
     /** Keeps the {@link #MAX_ITEM_TYPES} most numerous kinds (live preview only; the server evaluates exact counts). */

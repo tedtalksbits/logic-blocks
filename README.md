@@ -48,7 +48,7 @@ Logic Block items keep their rules: older programs are read and upgraded automat
    **Tab** accepts it.
 6. **Save**. The block's output changes within a tick or two.
 
-**Things to build:** an item sorter that also sorts tools and never jams on a full chest: one Logic Block per item
+**Things to build:** crafters, a super smelter and shulker loaders, each one command away ([docs/BUILDS.md](docs/BUILDS.md)); an item sorter that also sorts tools and never jams on a full chest: one Logic Block per item
 ([docs/SORTER.md](docs/SORTER.md); operators can have it built for them with `/logic demo sorter`).
 
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
@@ -78,6 +78,7 @@ action sets the output; the others, and all of a When rule's actions, are moves 
 | **Change** | the signal on a side (or any side) has just turned on or off | turns on / turns off: true for one check, so a held button counts once |
 | **Counter** | this block's counter A, B, C or D | = != < <= > >= a number |
 | **Timer** | this block's timer T1, T2, T3 or T4 | is / is not running, is / is not done (done: true for the one check when it runs out) |
+| **Fill** | how full the container on a side is, exactly what a comparator would read: 0 (empty) to 15 (full); a crafter reads 0 to 9, its filled and disabled slots | = != < <= > >= 0..15 |
 
 | Action | Does |
 |---|---|
@@ -96,7 +97,8 @@ input goes away. Example: a button feeding a repeater that points into the west 
 15`, otherwise **Keep**, is a door latch in one block.
 
 **Moving items** works like a hopper, never more: only between containers touching the Logic Block (chests, barrels,
-hoppers, droppers, dispensers, shulker boxes, furnaces), one item every 8 ticks, nothing created or lost. Furnaces take
+hoppers, droppers, dispensers, shulker boxes, furnaces, crafters), one item every 8 ticks, nothing created or lost.
+A crafter's enabled slots fill as from a hopper: empty slots first, then evenly. Furnaces take
 smelting input through their top and fuel through their sides, and give results out of their bottom, as for hoppers.
 Protection plugins that stop hoppers stop it too. Examples:
 
@@ -171,6 +173,7 @@ If/Else: counter A = 3 -> pulse 15 for 60 ticks, then set A to 0             (ot
 | `/logic demo sorter [item ...]` | operators | Builds a working, stocked item sorter next to you, one Logic Block per station ([docs/SORTER.md](docs/SORTER.md)) |
 | `/logic demo redstone-sorter [item ...]` | operators | The same with pure redstone, two Logic Blocks per station |
 | `/logic demo lock` | operators | Builds a combination lock (a counter) north of you |
+| `/logic demo iron-crafter`, `rocket-crafter [1-3]`, `super-smelter [1-8]`, `shulker-loader`, `shulker-unloader` | operators | Builds that machine next to you, stocked so it runs ([docs/BUILDS.md](docs/BUILDS.md)) |
 
 `logicblocks.use` (everyone): place Logic Blocks and edit your own. `logicblocks.admin` (operators): edit anyone's,
 `give`, `status`.

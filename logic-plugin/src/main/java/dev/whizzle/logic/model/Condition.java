@@ -16,11 +16,13 @@ import java.util.Objects;
  *   <li>COUNTER: this block's counter {@code id} ("a" to "d") compared with {@code number}.</li>
  *   <li>TIMER: this block's timer {@code id} ("t1" to "t4") {@code is} / {@code is not} done ({@code number} 0: it ran
  *       out at this check, true for one check only) or running ({@code number} 1).</li>
+ *   <li>FILL: how full the container on {@code side} is, 0 to 15, exactly what a comparator reads from it (a crafter
+ *       gives 0 to 9: its filled and disabled slots), compared with {@code number}.</li>
  * </ul>
  * Counters and timers are the block's own memory: no other block can see them.
  */
 public record Condition(Kind kind, Side side, Op op, String id, int number, int number2) {
-    public enum Kind { BLOCK, SIGNAL, ITEMS, PLAYERS, CHANGE, COUNTER, TIMER }   // append only: stored by ordinal
+    public enum Kind { BLOCK, SIGNAL, ITEMS, PLAYERS, CHANGE, COUNTER, TIMER, FILL }   // append only: stored by ordinal
 
     public enum Op {
         IS("is"), IS_NOT("is not"), EQ("="), NE("!="), LT("<"), LE("<="), GT(">"), GE(">=");
@@ -70,6 +72,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case CHANGE -> { op = Op.EQ; id = ""; number = number == 0 ? 0 : 1; number2 = 0; }
             case COUNTER -> { side = Side.ANY; number2 = 0; }
             case TIMER -> { side = Side.ANY; number = number == DONE ? DONE : RUNNING; number2 = 0; }
+            case FILL -> { id = ""; number2 = 0; }
         }
     }
 
@@ -83,6 +86,8 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
     /** Counter {@code counter} ("a" to "d") compared with {@code value}. */
     public static Condition counter(String counter, Op op, int value) { return new Condition(Kind.COUNTER, Side.ANY, op, counter, value, 0); }
     /** Timer {@code timer} ("t1" to "t4") is (or with {@code is} false, isn't) done / running. */
+    /** The container on {@code side} is this full (0 to 15, as a comparator reads it). */
+    public static Condition fill(Side side, Op op, int level) { return new Condition(Kind.FILL, side, op, "", level, 0); }
     public static Condition timer(String timer, boolean is, boolean running) { return new Condition(Kind.TIMER, Side.ANY, is ? Op.IS : Op.IS_NOT, timer, running ? RUNNING : DONE, 0); }
 
     /** Null when valid, otherwise what's wrong, in words a player understands. */
@@ -114,6 +119,11 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
                 if (!op.numeric()) return "Counter checks compare a number";
                 if (number < 0 || number > MAX_NUMBER) return "A counter is 0 to " + MAX_NUMBER;
             }
+            case FILL -> {
+                if (side == Side.ANY) return "Pick the side the container is on";
+                if (!op.numeric()) return "Fill checks compare a number";
+                if (number < 0 || number > 15) return "Fill is 0 to 15, as a comparator reads it";
+            }
             case TIMER -> {
                 if (timerIndex(id) < 0) return "Pick a timer, T1 to T4";
                 if (op.numeric()) return "Timer checks use \"is\" or \"is not\"";
@@ -134,6 +144,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case CHANGE -> "signal " + (side == Side.ANY ? "any side" : side.label().toLowerCase(Locale.ROOT)) + (number == 1 ? " turns on" : " turns off");
             case COUNTER -> "counter " + memoryLabel(id) + " " + op.symbol + " " + number;
             case TIMER -> memoryLabel(id) + " " + op.symbol + (number == RUNNING ? " running" : " done");
+            case FILL -> "fill " + side.label().toLowerCase(Locale.ROOT) + " " + op.symbol + " " + number;
         };
     }
 

@@ -9,7 +9,8 @@
 # and a fresh config.yml). Offline, set PAPER_SEED_DIR to an existing server folder: its cache/, versions/ and
 # libraries/ are copied in so Paper doesn't need to download the vanilla jar.
 #
-# Environment: SELFTEST_TIMEOUT (seconds, default 600), SELFTEST_PORT (default 25599), JAVA (default java).
+# Environment: SELFTEST_TIMEOUT (seconds, default 600), SELFTEST_PORT (default 25599), JAVA (default java),
+# SELFTEST_ONLY (comma-separated step-name prefixes, for a quick run of some steps while developing; CI runs all).
 set -euo pipefail
 
 paper_jar=${1:?usage: run-selftest.sh <paper.jar> <work-dir>}
@@ -58,6 +59,7 @@ echo "selftest: starting Paper ($(basename "$paper_jar")) with $(basename "${plu
 status=0
 # stdin from /dev/null: nobody types into the console. The self-test plugin stops the server when it's done.
 (cd "$work" && timeout --kill-after=30 "$timeout_s" "$java" -Xms1G -Xmx2G -Dlogic.selftest.exit=true \
+    -Dlogic.selftest.only="${SELFTEST_ONLY:-}" \
     -jar paper.jar --nogui < /dev/null > server.log 2>&1) || status=$?
 
 report="$work/plugins/LogicSelfTest/report.txt"

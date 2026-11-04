@@ -38,6 +38,7 @@ public final class Draft {
 				case CHANGE -> { op = Condition.Op.EQ; if (!number.equals("0")) number = "1"; }
 				case COUNTER -> { op = op.numeric() ? op : Condition.Op.GE; if (Condition.counterIndex(id) < 0) id = "a"; if (parse(number) < 0) number = "1"; }
 				case TIMER -> { op = op == Condition.Op.IS_NOT ? op : Condition.Op.IS; if (Condition.timerIndex(id) < 0) id = "t1"; number = "0"; }
+				case FILL -> { if (side == Side.ANY) side = Side.DOWN; op = op.numeric() ? op : Condition.Op.EQ; int n = parse(number); if (n < 0 || n > 15) number = "15"; }
 			}
 		}
 

@@ -65,6 +65,33 @@ final class WorldInputs implements Engine.Inputs {
         return counts;
     }
 
+    @Override public int fill(Side side) {
+        if (side == Side.ANY) return -1;
+        BlockState state = block.getRelative(face(side)).getState(false);
+        return state instanceof Container c ? fill(c) : -1;
+    }
+
+    /** What a comparator reads from {@code c}: a crafter counts its filled and disabled slots (0-9), others vanilla's fullness. */
+    static int fill(Container c) {
+        org.bukkit.inventory.Inventory inv = c.getInventory();
+        if (c instanceof org.bukkit.block.Crafter crafter) {
+            int n = 0;
+            for (int i = 0; i < inv.getSize(); i++) {
+                ItemStack s = inv.getItem(i);
+                if ((s != null && !s.getType().isAir()) || crafter.isSlotDisabled(i)) n++;
+            }
+            return n;
+        }
+        int[] counts = new int[inv.getSize()], maxima = new int[inv.getSize()];
+        for (int i = 0; i < counts.length; i++) {
+            ItemStack s = inv.getItem(i);
+            if (s == null || s.getType().isAir()) { maxima[i] = 1; continue; }
+            counts[i] = s.getAmount();
+            maxima[i] = Math.min(inv.getMaxStackSize(), s.getMaxStackSize());
+        }
+        return Engine.comparator(counts, maxima);
+    }
+
     @Override public int players(int radius) {
         return distances(radius).length;
     }
@@ -92,6 +119,8 @@ final class WorldInputs implements Engine.Inputs {
             Map<String, Integer> c = container(s);
             containers.add(c == null ? null : Snapshot.fold(c));
         }
-        return new Snapshot(blocks, signals, containers, distances(dev.whizzle.logic.model.Condition.MAX_RADIUS), output, matched);
+        int[] fills = new int[6];
+        for (Side s : Side.FACES) fills[s.ordinal()] = fill(s);
+        return new Snapshot(blocks, signals, containers, distances(dev.whizzle.logic.model.Condition.MAX_RADIUS), output, matched).withFills(fills);
     }
 }

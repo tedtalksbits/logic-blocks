@@ -22,6 +22,8 @@ public final class Engine {
         default int timerLeft(int i) { return 0; }
         /** Whether timer {@code i} ran out at this check. */
         default boolean timerDone(int i) { return false; }
+        /** How full the container on that side is, 0 to 15 as a comparator reads it, or -1 if there is no container. */
+        default int fill(Side side) { return -1; }
     }
 
     /**
@@ -91,6 +93,11 @@ public final class Engine {
                         int v = i < 0 ? 0 : in.counter(i);
                         reading = Condition.memoryLabel(cond.id()) + " = " + v;
                         ok = i >= 0 && cond.op().test(v, cond.number());
+                    }
+                    case FILL -> {
+                        int f = in.fill(cond.side());
+                        reading = f < 0 ? "no container" : "fill " + f;
+                        ok = f >= 0 && cond.op().test(f, cond.number());
                     }
                     case TIMER -> {
                         int i = Condition.timerIndex(cond.id());
@@ -165,6 +172,7 @@ public final class Engine {
                 @Override public int signal(Side side) { return world.signal(side); }
                 @Override public int items(Side side, String id) { return world.items(side, id); }
                 @Override public int players(int radius) { return world.players(radius); }
+                @Override public int fill(Side side) { return world.fill(side); }
                 @Override public int counter(int i) { return st.counters[i]; }
                 @Override public int timerLeft(int i) { return st.timerEnd[i] < 0 ? 0 : (int) Math.max(1, st.timerEnd[i] - tick); }
                 @Override public boolean timerDone(int i) { return (st.timerDone >> i & 1) != 0; }
@@ -179,6 +187,20 @@ public final class Engine {
         public State(int matched, int output, long pulseUntil, boolean toggled) {
             this.matched = matched; this.output = output; this.pulseUntil = pulseUntil; this.toggled = toggled;
         }
+    }
+
+    /**
+     * What a comparator reads from a container: 0 when empty, else 1 + 14 x how full it is (each slot counts its items
+     * over the most that slot can hold), rounded down. Vanilla's formula, in the same float arithmetic.
+     *
+     * @param counts item count per slot (0 for empty); {@code maxima} the most each slot's item can stack to there
+     */
+    public static int comparator(int[] counts, int[] maxima) {
+        if (counts.length == 0) return 0;
+        float f = 0;
+        for (int i = 0; i < counts.length; i++) if (counts[i] > 0) f += counts[i] / (float) maxima[i];
+        f /= counts.length;
+        return (int) Math.floor(f * 14) + (f > 0 ? 1 : 0);
     }
 
     /**

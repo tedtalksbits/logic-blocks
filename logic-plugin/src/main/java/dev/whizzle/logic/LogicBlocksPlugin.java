@@ -113,6 +113,37 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
      * /logic demo redstone-sorter [item ...]: the pure-redstone sorter (two per station). Both from docs/SORTER.md,
      * built beside the player, programmed, owned by them, with a stocked feeder chest.
      */
+    /** /logic demo <machine> [n]: one of {@link Machines}, starting 2 blocks east and 2 south of the player, stocked. */
+    private void demoMachine(Player p, Machines.Kind kind, String[] args) {
+        int n = switch (kind) { case ROCKET_CRAFTER -> 3; case SUPER_SMELTER -> Machines.MAX_FURNACES; default -> 0; };
+        int max = kind == Machines.Kind.ROCKET_CRAFTER ? 3 : Machines.MAX_FURNACES;
+        if (args.length >= 3 && n > 0) {
+            try { n = Integer.parseInt(args[2]); } catch (NumberFormatException e) { n = -1; }
+            if (n < 1 || n > max) {
+                p.sendMessage(Component.text((kind == Machines.Kind.ROCKET_CRAFTER ? "Flight duration" : "Furnaces") + ": 1 to " + max + ".", NamedTextColor.RED));
+                return;
+            }
+        }
+        Block feet = p.getLocation().getBlock();
+        int x = feet.getX() + 2, y = feet.getY(), z = feet.getZ() + 2;
+        Block blocked = Machines.blocked(p.getWorld(), x, y, z, kind, n);
+        if (blocked != null) {
+            int[] s = Machines.size(kind, n);
+            p.sendMessage(Component.text("Not enough room: " + blocked.getType().getKey().getKey() + " at " + blocked.getX() + " " + blocked.getY() + " " + blocked.getZ()
+                + ". It needs a clear space " + s[0] + " wide (east), " + s[2] + " deep (south) and " + s[1] + " high, starting 2 east and 2 south of you.", NamedTextColor.RED));
+            return;
+        }
+        Machines.build(manager, p.getWorld(), x, y, z, kind, n, p.getUniqueId(), p.getName());
+        String how = switch (kind) {
+            case IRON_CRAFTER -> "Iron ingots go in the chest on top; iron blocks come out in the chest in front of the crafter.";
+            case ROCKET_CRAFTER -> "Paper and gunpowder go in the chest on top; flight " + n + " rockets come out in the chest in front of the crafter.";
+            case SUPER_SMELTER -> n + " furnaces. Things to smelt go in the top chest, coal in the chest at the back; results come out in the chest at the bottom east end.";
+            case SHULKER_LOADER -> "Empty shulker boxes go in the top chest (over the dispenser), items in the chest at the east end; full boxes come out in the chest at the bottom west.";
+            case SHULKER_UNLOADER -> "Full shulker boxes go in the top chest (over the dispenser); their items and the empty boxes come out in the chest at the bottom west.";
+        };
+        p.sendMessage(Component.text("Built a " + kind.command.replace('-', ' ') + " next to you, stocked so it starts working. " + how + " How it works: docs/BUILDS.md", NamedTextColor.GREEN));
+    }
+
     /** /logic demo lock: the combination lock (Demos.lock), 3 blocks south of the player, door facing them. */
     private void demoLock(Player p) {
         Block feet = p.getLocation().getBlock();
@@ -133,6 +164,8 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
         if (!(sender instanceof Player p)) { sender.sendMessage("Players only."); return; }
         String which = args.length < 2 ? "" : args[1].toLowerCase(java.util.Locale.ROOT);
         if (which.equals("lock")) { demoLock(p); return; }
+        Machines.Kind machine = Machines.Kind.of(which);
+        if (machine != null) { demoMachine(p, machine, args); return; }
         if (!which.equals("sorter") && !which.equals("redstone-sorter")) {
             p.sendMessage(Component.text("/logic demo sorter [item ...]", NamedTextColor.YELLOW)
                 .append(Component.text("  one Logic Block per station, moving items", NamedTextColor.GRAY)));
@@ -140,6 +173,8 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
                 .append(Component.text("  pure redstone: two per station, locking hoppers", NamedTextColor.GRAY)));
             p.sendMessage(Component.text("/logic demo lock", NamedTextColor.YELLOW)
                 .append(Component.text("  a combination lock: three buttons in the right order open a door", NamedTextColor.GRAY)));
+            p.sendMessage(Component.text("/logic demo iron-crafter | rocket-crafter [1-3] | super-smelter [1-8] | shulker-loader | shulker-unloader", NamedTextColor.YELLOW)
+                .append(Component.text("  machines built from vanilla blocks (docs/BUILDS.md)", NamedTextColor.GRAY)));
             return;
         }
         boolean moving = which.equals("sorter");
@@ -175,8 +210,12 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) return sender.hasPermission("logicblocks.admin") ? List.of("info", "give", "status", "demo") : List.of("info");
         if (args.length == 2 && args[0].equalsIgnoreCase("give")) return null; // player names
-        if (args.length == 2 && args[0].equalsIgnoreCase("demo")) return List.of("sorter", "redstone-sorter", "lock");
-        if (args.length >= 3 && args[0].equalsIgnoreCase("demo")) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("demo")) {
+            List<String> all = new java.util.ArrayList<>(List.of("sorter", "redstone-sorter", "lock"));
+            for (Machines.Kind k : Machines.Kind.values()) all.add(k.command);
+            return all;
+        }
+        if (args.length >= 3 && args[0].equalsIgnoreCase("demo") && args[1].toLowerCase(java.util.Locale.ROOT).endsWith("sorter")) {
             String prefix = args[args.length - 1].toLowerCase(java.util.Locale.ROOT);
             return java.util.Arrays.stream(Material.values()).filter(m -> m.isItem() && !m.isAir() && !m.isLegacy())
                 .map(m -> m.getKey().getKey()).filter(k -> k.startsWith(prefix)).limit(40).toList();

@@ -187,8 +187,14 @@ public final class LogicScreen extends Screen {
 					x = cycle(x, y, 22, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
 					x = number(x, y, 40, cond.number, v -> cond.number = v, edit);
 				}
-				case TIMER -> {
-					x = cycle(x, y, 26, Condition.memoryLabel(cond.id), edit, () -> cond.id = Draft.next(TIMER_IDS, cond.id));
+				case FILL -> {
+						x = cycle(x, y, 44, cond.side.label(), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
+						x = cycle(x, y, 22, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
+						x = number(x, y, 24, cond.number, v -> cond.number = v, edit);
+						x = word(x, y, "of 15, like a comparator");
+					}
+					case TIMER -> {
+						x = cycle(x, y, 26, Condition.memoryLabel(cond.id), edit, () -> cond.id = Draft.next(TIMER_IDS, cond.id));
 					x = cycle(x, y, 40, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
 					x = cycle(x, y, 50, cond.running() ? "running" : "done", edit, cond::flipTimer);
 				}
@@ -594,7 +600,7 @@ public final class LogicScreen extends Screen {
 
 	static String kindLabel(Condition.Kind k) {
 		return switch (k) { case BLOCK -> "Block"; case SIGNAL -> "Signal"; case ITEMS -> "Items"; case PLAYERS -> "Players"; case CHANGE -> "Change";
-			case COUNTER -> "Counter"; case TIMER -> "Timer"; };
+			case COUNTER -> "Counter"; case TIMER -> "Timer"; case FILL -> "Fill"; };
 	}
 
 	static String actionLabel(Action.Kind k) {
@@ -629,6 +635,7 @@ public final class LogicScreen extends Screen {
 					case CHANGE -> (c.side == Side.ANY ? "any" : c.side.label().toLowerCase(Locale.ROOT)) + (c.turnsOn() ? " on" : " off");
 					case COUNTER -> Condition.memoryLabel(c.id) + c.op.symbol + c.number;
 					case TIMER -> Condition.memoryLabel(c.id) + (c.op == Condition.Op.IS ? " " : " not ") + (c.running() ? "running" : "done");
+					case FILL -> "fill " + c.side.label().toLowerCase(Locale.ROOT) + c.op.symbol + c.number;
 				});
 		}
 		if (r.conditions.isEmpty()) sb.append("always");

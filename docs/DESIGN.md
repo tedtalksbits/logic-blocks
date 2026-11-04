@@ -105,6 +105,15 @@ Anything that does more than switch redstone (so far: **Move items**) must pass 
 
 Several moves in one block share the one-item-per-8-ticks budget; the first move that can happen in a check wins.
 
+**Crafters** take moves as from a hopper (`Mover.crafterSlot`, vanilla's `CrafterBlockEntity.canPlaceItem`): an item
+goes into the first enabled slot that is empty, or holds the same item with no later enabled slot that is empty or
+has fewer. So the grid fills evenly, which is what makes one-move-per-ingredient crafters work.
+
+**Fill** (`Condition.Kind.FILL`) reads a container as a comparator does (`Engine.comparator`, vanilla's
+`AbstractContainerMenu.getRedstoneSignalFromContainer` in the same float arithmetic; a crafter counts filled and
+disabled slots, as its comparator output does). It's what lets a shulker loader see "full" whatever the items stack
+to. Both came with the machines in `docs/BUILDS.md` (`Machines`), each checked on a real server by the self-test.
+
 ## Storage
 
 Each block's program, owner and state (output, toggles, pulses, counters, timers) live in its **chunk's persistent data** under

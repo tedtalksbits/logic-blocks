@@ -14,7 +14,8 @@ import org.bukkit.inventory.ItemStack;
  * The "move items" action, held to the five rules for anything beyond redstone (docs/DESIGN.md):
  * <ol>
  *   <li>Only what a hopper could do: containers a hopper works with, through the faces a hopper would use (a furnace
- *       takes smelting input through its top, fuel through its sides and bottom, and gives results out of the bottom).</li>
+ *       takes smelting input through its top, fuel through its sides and bottom, and gives results out of the bottom;
+ *       a crafter fills its enabled slots evenly, as {@link #crafterSlot} explains).</li>
  *   <li>Only the containers touching the Logic Block; never loads a chunk.</li>
  *   <li>One item per {@link #COOLDOWN} ticks per Logic Block, a hopper's speed.</li>
  *   <li>Moves items, never creates or destroys them.</li>
@@ -70,6 +71,12 @@ final class Mover {
         /** The slot one more of {@code one} goes into through this face, or -1 if it doesn't fit. */
         int slotFor(ItemStack one) {
             if (state instanceof ShulkerBox && Tag.SHULKER_BOXES.isTagged(one.getType())) return -1;
+            if (state instanceof Crafter crafter) {
+                ItemStack[] items = new ItemStack[inv.getSize()];
+                boolean[] disabled = new boolean[items.length];
+                for (int i = 0; i < items.length; i++) { items[i] = inv.getItem(i); disabled[i] = crafter.isSlotDisabled(i); }
+                return crafterSlot(items, disabled, one);
+            }
             int[] slots = !furnace() ? range(inv.getSize())
                 : face == Side.UP ? new int[]{0} : one.getType().isFuel() ? new int[]{1} : new int[0];
             int max = Math.min(one.getMaxStackSize(), inv.getMaxStackSize());
@@ -82,6 +89,28 @@ final class Mover {
         }
     }
 
+    /**
+     * Where a hopper puts one more {@code one} into a crafter: the first slot, in order, that is enabled, not full,
+     * and either empty or holding the same item with no later enabled slot that is empty or holds fewer of it. So
+     * empty slots fill first and the grid fills evenly (vanilla's {@code CrafterBlockEntity.canPlaceItem}).
+     */
+    static int crafterSlot(ItemStack[] items, boolean[] disabled, ItemStack one) {
+        for (int s = 0; s < items.length; s++) {
+            if (disabled[s]) continue;
+            ItemStack there = items[s];
+            if (there == null || there.getType().isAir()) return s;
+            if (!there.isSimilar(one) || there.getAmount() >= there.getMaxStackSize()) continue;
+            boolean smaller = false;
+            for (int t = s + 1; t < items.length && !smaller; t++) {
+                if (disabled[t]) continue;
+                ItemStack other = items[t];
+                smaller = other == null || other.getType().isAir() || (other.getAmount() < there.getAmount() && other.isSimilar(there));
+            }
+            if (!smaller) return s;
+        }
+        return -1;
+    }
+
     private static int[] range(int n) { int[] a = new int[n]; for (int i = 0; i < n; i++) a[i] = i; return a; }
 
     /** The container on {@code side} of the Logic Block if a hopper could use it, else null. */
@@ -92,7 +121,7 @@ final class Mover {
         if (!block.getWorld().isChunkLoaded(x >> 4, z >> 4)) return null;
         BlockState state = block.getRelative(f).getState(false);
         boolean usable = state instanceof Chest || state instanceof Barrel || state instanceof Hopper || state instanceof Dropper
-            || state instanceof Dispenser || state instanceof ShulkerBox || state instanceof Furnace;
+            || state instanceof Dispenser || state instanceof ShulkerBox || state instanceof Furnace || state instanceof Crafter;
         if (!usable || !(state instanceof Container c)) return null;
         return new Box(c.getInventory(), state, opposite(side));
     }

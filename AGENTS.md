@@ -36,6 +36,11 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   client 26; the real-Paper self-test (72 checks) presses the lock's buttons in right and wrong orders and checks a
   delayed off, a clock and a counter across a chunk unload. Editor rows are compiled and unit-tested but **not yet
   seen in a real game** (`docs/TEST_PLAN.md` tests 43-50).
+- **Machines** (same unreleased plugin 0.4.0 / client 0.5.0, protocol 3): `/logic demo iron-crafter | rocket-crafter
+  [1-3] | super-smelter [1-8] | shulker-loader | shulker-unloader` (`Machines`, `docs/BUILDS.md`). Added for them:
+  the **Fill** condition (comparator reading) and moves into crafters (vanilla slot rule). The self-test builds all
+  five side by side and checks every result; the editor's Fill row is unit-tested, not yet seen in a game (tests
+  51-56). Plugin 56 tests, client 26.
 - Editor UX (client 0.4.0, released in v0.3.0): Tab completes ids, a **hand** button, centred column (`MAX_WIDTH`,
   set to 1080 by the owner).
 - v2 sorter: one Logic Block per station (`/logic demo sorter`, `Demos.moveSorter`): no wrong items even at double
@@ -51,7 +56,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 
 ## Open items
 
-1. The owner's real-game check of counters and timers (tests 43-50), then release v0.4.0.
+1. The owner's real-game check of counters and timers (tests 43-50) and the machines (51-56), then release v0.4.0.
 2. v2 step 4: copy and paste rules between Logic Blocks, and presets. Later: shared variables, wireless links,
    optional item texture through a resource pack.
 3. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
@@ -96,7 +101,8 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - Plugin: `gradlew build` at the repo root (Java 25, Gradle 9.8.0 via `gradlew`, same as the client). Jar: `logic-plugin/build/libs/logic-plugin-<v>.jar`.
 - Client: `cd fabric-client && gradlew build` (Loom 1.19.2 needs Gradle 9.8.0). Jar:
   `fabric-client/build/libs/logic-blocks-client-<v>.jar`.
-- Self-test: `ci/run-selftest.sh <paper.jar> <new-folder>` (Linux, Git Bash, CI) sets up a throwaway flat-world
+- Self-test: `ci/run-selftest.sh <paper.jar> <new-folder>` (`SELFTEST_ONLY=machines,shulker` runs only the steps
+  whose names start that way, for a quick check while developing) (Linux, Git Bash, CI) sets up a throwaway flat-world
   server, runs it with `-Dlogic.selftest.exit=true`, and fails unless `plugins/LogicSelfTest/report.txt` ends
   `SELFTEST PASSED`. Offline, add `PAPER_SEED_DIR=<existing server folder>`.
 - CI runs all three on every push to `main` (`docs/CI.md`). Releases: tag `v<plugin version>`; the release

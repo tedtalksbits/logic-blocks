@@ -26,7 +26,8 @@ VarInt strength, VarInt ticks, String id, VarInt from side, VarInt to side. Enum
 `Condition.Kind`, `Side`, `Condition.Op`, `Action.Kind`; append new values at the end only. Format 3 has the same
 layout as format 2 and adds the kinds COUNTER and TIMER (conditions: id "a" to "d" or "t1" to "t4"; a timer's number
 is 0 done, 1 running) and ADD, SUBTRACT, SET_COUNTER, START, STOP (actions: id the counter or timer, strength the
-amount or value, ticks the timer length). `Program.decode` reads formats 1, 2 and 3.
+amount or value, ticks the timer length), and FILL (a condition: side, op, number 0-15). `Program.decode` reads
+formats 1, 2 and 3.
 
 Format 1 (v1): VarInt format (1), rules as above but each with exactly one action written as VarInt kind, VarInt
 strength, VarInt ticks; then the "otherwise" action in the same short form; no When rules. `Program.decode` reads
@@ -36,7 +37,7 @@ both, for blocks and items saved by v1.
 VarInt signal, Bool has container, and if so VarInt n + n x (String item id, VarInt count). Then VarInt player
 count + each distance in tenths of a block, VarInt current output, VarInt (matched rule + 1), then (since protocol
 3) 4 x VarInt counter A to D, 4 x VarInt ticks left on timer T1 to T4 (0: not running), VarInt timers done at the
-last check (bit per timer).
+last check (bit per timer), and for each side in the order above VarInt (fill + 1), 0 meaning no container.
 
 ## Behaviour
 

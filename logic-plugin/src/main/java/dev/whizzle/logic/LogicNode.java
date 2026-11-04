@@ -46,6 +46,8 @@ public final class LogicNode {
     public String ownerName() { return ownerName; }
     public int output() { return applied; }
     public Engine.State state() { return state; }
+    /** The last check's result (null before the first). */
+    public Engine.Evaluation last() { return last; }
 
     /** Chunk storage record: program, owner, and runtime state (pulse and timer times are stored as ticks remaining). */
     byte[] encode(long now) {
