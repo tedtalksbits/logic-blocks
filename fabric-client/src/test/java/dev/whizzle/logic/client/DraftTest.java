@@ -185,6 +185,13 @@ class DraftTest {
 		assertEquals(-1, Draft.ticks("."));
 	}
 
+	@Test void everyPresetSurvivesTheEditorAndTheClipboard() {
+		for (Presets.Preset p : Presets.all()) {
+			assertEquals(p.program(), new Draft(p.program()).build(id -> true, id -> true).program(), p.name());
+			assertEquals(p.program(), Program.fromText(p.program().toText()), p.name());
+		}
+	}
+
 	@Test void cyclingWraps() {
 		assertEquals(Side.NORTH, Draft.next(List.of(Side.FACES), Side.DOWN));
 		assertEquals(Condition.Op.IS_NOT, Draft.next(List.of(Condition.Op.IS, Condition.Op.IS_NOT), Condition.Op.IS));

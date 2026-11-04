@@ -78,32 +78,12 @@ public final class Machines {
 
     // ---- crafters ----
 
-    /**
-     * The crafter's trigger, shared by both crafters: when the grid is full (a comparator would read 9) and timer T1
-     * isn't running, output 15 for one check and start T1 for half a second. That's a rising edge (the crafter crafts
-     * once per edge) and, while the grid stays full, another every half second, so a craft that didn't happen is tried
-     * again.
-     */
-    static Program.Rule craftTrigger() {
-        return new Program.Rule(List.of(Condition.fill(Side.EAST, Op.EQ, 9), Condition.timer("t1", false, true)),
-            List.of(Action.set(15), Action.start("t1", 10)));
-    }
 
-    /** Iron ingots from the chest above into the crafter east of it, nine to a grid, then a pulse: iron blocks. */
-    public static Program ironCrafter() {
-        return new Program(List.of(craftTrigger()), Action.set(0),
-            List.of(new Program.Rule(List.of(), Action.move("iron_ingot", Side.UP, Side.EAST))));
-    }
 
-    /**
-     * Firework rockets of flight duration {@code flight} (1 to 3): the crafter has {@code flight} + 1 slots enabled, and
-     * the Logic Block brings gunpowder until there are {@code flight}, and one paper.
-     */
-    public static Program rocketCrafter(int flight) {
-        return new Program(List.of(craftTrigger()), Action.set(0), List.of(
-            new Program.Rule(List.of(Condition.items(Side.EAST, "gunpowder", Op.LT, flight)), Action.move("gunpowder", Side.UP, Side.EAST)),
-            new Program.Rule(List.of(Condition.items(Side.EAST, "paper", Op.EQ, 0)), Action.move("paper", Side.UP, Side.EAST))));
-    }
+    /** The programs live in {@link Presets}, shared with the editor's Presets list. */
+    public static Program ironCrafter() { return Presets.ironCrafter(); }
+
+    public static Program rocketCrafter(int flight) { return Presets.rocketCrafter(flight); }
 
     /** Logic Block (x, y, z) under the input chest, crafter east of it facing south into the output chest. */
     static Built crafter(LogicManager m, World w, int x, int y, int z, Program p, int enabledSlots, UUID owner, String name) {
@@ -125,20 +105,9 @@ public final class Machines {
 
     // ---- super smelter ----
 
-    /**
-     * Above each furnace: hand it input while it holds fewer than 4 items in all (1 or 2 coal, the one cooking, one
-     * waiting), and leave the rest in the line for the next furnaces, so the work spreads over all of them.
-     */
-    public static Program smelterInput() {
-        return Program.EMPTY.withAlso(List.of(new Program.Rule(List.of(Condition.items(Side.DOWN, "*", Op.LT, 4)), Action.move("*", Side.UP, Side.DOWN))));
-    }
+    public static Program smelterInput() { return Presets.smelterInput(); }
 
-    /** Below each furnace: take results out into the collection line, and keep 1 or 2 coal in it from the fuel line (south). */
-    public static Program smelterService() {
-        return Program.EMPTY.withAlso(List.of(
-            new Program.Rule(List.of(), Action.move("*", Side.UP, Side.DOWN)),
-            new Program.Rule(List.of(Condition.items(Side.UP, "coal", Op.LT, 2)), Action.move("coal", Side.SOUTH, Side.UP))));
-    }
+    public static Program smelterService() { return Presets.smelterService(); }
 
     /**
      * {@code n} furnaces in a row at y + 2, x + 1 to x + n, facing south. Layers, bottom up: collection line (hoppers
@@ -173,38 +142,13 @@ public final class Machines {
     // ---- shulker loader and unloader ----
 
     /** Signals between the shulker machine's Logic Blocks: what the brain (LB-C) outputs. */
-    public static final int BOX_WORKING = 0, BOX_MISSING = 7, BOX_DONE = 15;
+    public static final int BOX_WORKING = Presets.BOX_WORKING, BOX_MISSING = Presets.BOX_MISSING, BOX_DONE = Presets.BOX_DONE;
 
-    /**
-     * The brain, beside the box spot (west of it): "done" (15) when the box is full (loader: a comparator would read 15)
-     * or empty (unloader), "missing" (7) when there is no box (air, or the piston head), "working" (0) otherwise. The
-     * loader's brain also fills the box from the chest east of it.
-     */
-    public static Program shulkerBrain(boolean loader) {
-        Condition done = loader ? Condition.fill(Side.WEST, Op.EQ, 15) : Condition.items(Side.WEST, "*", Op.EQ, 0);
-        Program p = new Program(List.of(
-            new Program.Rule(List.of(done), Action.set(BOX_DONE)),
-            new Program.Rule(List.of(Condition.fill(Side.WEST, Op.GE, 0)), Action.set(BOX_WORKING))), Action.set(BOX_MISSING));
-        return loader ? p.withAlso(List.of(new Program.Rule(List.of(), Action.move("*", Side.EAST, Side.WEST)))) : p;
-    }
+    public static Program shulkerBrain(boolean loader) { return Presets.shulkerBrain(loader); }
 
-    /**
-     * Fires the block next to it (the piston or the dispenser) when the brain on side {@code brain} says {@code code}:
-     * a 6-tick pulse, then again every second while it still says so (a dispenser that was empty, say).
-     */
-    public static Program shulkerFire(Side brain, int code) {
-        return new Program(List.of(new Program.Rule(List.of(Condition.signal(brain, Op.EQ, code), Condition.timer("t1", false, true)),
-            List.of(Action.pulse(15, 6), Action.start("t1", 20)))), Action.keep());
-    }
+    public static Program shulkerFire(Side brain, int code) { return Presets.shulkerFire(brain, code); }
 
-    /**
-     * LB-D: like {@link #shulkerFire} for "missing", but only while the dispenser (west of it) has a box in it, so an
-     * empty dispenser isn't clicked every second; it fires as soon as the hopper above refills it (idea: the owner).
-     */
-    public static Program shulkerDispense() {
-        return new Program(List.of(new Program.Rule(List.of(Condition.signal(Side.DOWN, Op.EQ, BOX_MISSING), Condition.timer("t1", false, true),
-            Condition.fill(Side.WEST, Op.NE, 0)), List.of(Action.pulse(15, 6), Action.start("t1", 20)))), Action.keep());
-    }
+    public static Program shulkerDispense() { return Presets.shulkerDispense(); }
 
     /**
      * Box spot S at (x + 1, y + 1, z + 2). Above it a dispenser facing down places boxes (fed from the chest two above

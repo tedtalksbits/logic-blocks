@@ -153,6 +153,28 @@ public record Program(List<Rule> rules, Action otherwise, List<Rule> also) {
         return rules;
     }
 
+    /** What copied rules start with on the clipboard. */
+    public static final String TEXT_PREFIX = "logicblocks:";
+
+    /** The rules as one line of text for the clipboard: "logicblocks:" and the encoded program in URL-safe base64. */
+    public String toText() {
+        return TEXT_PREFIX + java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(encode());
+    }
+
+    /** Reads {@link #toText}; throws IllegalArgumentException, with a message for players, if it isn't copied rules. */
+    public static Program fromText(String text) {
+        String t = text == null ? "" : text.strip();
+        if (!t.startsWith(TEXT_PREFIX)) throw new IllegalArgumentException("The clipboard doesn't hold copied Logic Block rules");
+        byte[] data;
+        try { data = java.util.Base64.getUrlDecoder().decode(t.substring(TEXT_PREFIX.length())); }
+        catch (IllegalArgumentException e) { throw new IllegalArgumentException("The copied rules are damaged"); }
+        try { return decode(data); }
+        catch (RuntimeException e) {
+            String m = e.getMessage();
+            throw new IllegalArgumentException(m != null && m.contains("newer") ? "These rules are from a newer Logic Blocks" : "The copied rules are damaged");
+        }
+    }
+
     public List<String> describe() {
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < rules.size(); i++) lines.add((i + 1) + ". " + rules.get(i).describe());

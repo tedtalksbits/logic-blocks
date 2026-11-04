@@ -41,6 +41,10 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   the **Fill** condition (comparator reading) and moves into crafters (vanilla slot rule). The self-test builds all
   five side by side and checks every result; the editor's Fill row is unit-tested, not yet seen in a game (tests
   51-56). Plugin 56 tests, client 26.
+- **Copy, Paste, Presets** (client 0.5.0): Copy puts the draft on the clipboard as `logicblocks:` + base64 of the
+  encoded program (`Program.toText`/`fromText`); Presets (`model/Presets`, shared) are the same programs the demos
+  build (`Demos`/`Machines` delegate to them). Client-only UI, no protocol change; tests 58-61.
+- Demos only run in creative mode (they're free resources).
 - Editor UX (client 0.4.0, released in v0.3.0): Tab completes ids, a **hand** button, centred column (`MAX_WIDTH`,
   set to 1080 by the owner).
 - v2 sorter: one Logic Block per station (`/logic demo sorter`, `Demos.moveSorter`): no wrong items even at double
@@ -56,9 +60,8 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 
 ## Open items
 
-1. The owner's real-game check of counters and timers (tests 43-50) and the machines (51-56), then release v0.4.0.
-2. v2 step 4: copy and paste rules between Logic Blocks, and presets. Later: shared variables, wireless links,
-   optional item texture through a resource pack.
+1. The owner's real-game check of tests 43-61, then release v0.4.0 (plugin 0.4.0, client 0.5.0).
+2. Later, not committed to: shared variables, wireless links, optional item texture through a resource pack.
 3. Optional: Mod Menu entry for the label settings (its Maven repo isn't in the offline cache).
 
 ## Decisions already made (don't reopen without asking)

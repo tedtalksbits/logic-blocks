@@ -96,6 +96,15 @@ Each command builds next to you (2 east, 2 south), stocked, in creative mode. Ri
 | 56 | In any of them, open a Logic Block | **Fill** rows show `now: fill N` (a crafter 0-9, others 0-15), matching a comparator placed against the same container. |
 | 57 | In survival (even as an operator), run any `/logic demo ...` | It refuses: demos only work in creative mode. |
 
+## Tests: copy, paste, presets
+
+| # | Do this | Expect |
+|---|---|---|
+| 58 | Open the lock demo's Logic Block, **Copy**. Place a new Logic Block, open it, **Paste** | "Replace these rules?" only if the new block has rules; then the editor shows the lock's 5 When rules and the If/Else rule, "Not saved yet". **Save**: it works like the original. |
+| 59 | Paste the copied text into a chat or text file | One line starting `logicblocks:`. Copy something else (any text), then **Paste** in the editor: "The clipboard doesn't hold copied Logic Block rules". |
+| 60 | **Presets**, pick "Door that closes itself", **Use**, **Save**. Button into the west side, door on the east | The preset's description and rules show before you pick it. The door opens on a press and closes 5 seconds later. |
+| 61 | Open a block you don't own (not an operator) | **Copy** works; **Paste** and **Presets** are greyed out. |
+
 ## Please report
 
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the

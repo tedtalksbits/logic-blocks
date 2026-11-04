@@ -70,10 +70,8 @@ public final class Demos {
         return new Sorter(feeder, chests, overflow);
     }
 
-    /** The whole v2 station program: also, always, move the item from up (the line hopper) to down (the chest). */
-    public static Program moveStation(Material item) {
-        return Program.EMPTY.withAlso(List.of(new Program.Rule(List.of(), Action.move(id(item), Side.UP, Side.DOWN))));
-    }
+    /** The v2 station program (Presets.moveStation): also, always, move the item from up (the line hopper) to down (the chest). */
+    public static Program moveStation(Material item) { return Presets.moveStation(id(item)); }
 
     // ---- the v1 sorter: pure redstone, two Logic Blocks per station ----
 
@@ -149,34 +147,12 @@ public final class Demos {
     /** What the lock demo was built from: the Logic Block, the buttons in the order to press them, and the door. */
     public record Lock(Block logic, List<Block> buttons, Block door) {}
 
-    /**
-     * The combination lock's program: buttons on the west, north and east sides, pressed in that order, open the door
-     * on the south side for 3 seconds. Counter A remembers how far along the combination you are; a press out of
-     * order puts it back to 0.
-     */
-    public static Program lockProgram() {
-        Program.Rule open = new Program.Rule(List.of(Condition.counter("a", Op.EQ, 3)), List.of(Action.pulse(15, 60), Action.setCounter("a", 0)));
-        return new Program(List.of(open), Action.keep(), List.of(
-            new Program.Rule(List.of(Condition.change(Side.WEST, true)), Action.setCounter("a", 1)),
-            new Program.Rule(List.of(Condition.change(Side.NORTH, true), Condition.counter("a", Op.EQ, 1)), Action.setCounter("a", 2)),
-            new Program.Rule(List.of(Condition.change(Side.EAST, true), Condition.counter("a", Op.EQ, 2)), Action.setCounter("a", 3)),
-            new Program.Rule(List.of(Condition.change(Side.NORTH, true), Condition.counter("a", Op.NE, 1)), Action.setCounter("a", 0)),
-            new Program.Rule(List.of(Condition.change(Side.EAST, true), Condition.counter("a", Op.NE, 2)), Action.setCounter("a", 0))));
-    }
+    /** The combination lock's program (Presets.lock). */
+    public static Program lockProgram() { return Presets.lock(); }
 
-    /** Stays on while the west signal is on and for {@code ticks} after it goes off (a timer started when it goes off). */
-    public static Program delayedOff(int ticks) {
-        return new Program(List.of(
-            new Program.Rule(List.of(Condition.signal(Side.WEST, Op.GT, 0)), Action.set(15)),
-            new Program.Rule(List.of(Condition.timer("t1", true, false)), Action.set(0))), Action.keep(),
-            List.of(new Program.Rule(List.of(Condition.signal(Side.WEST, Op.EQ, 0)), Action.start("t1", ticks))));
-    }
+    public static Program delayedOff(int ticks) { return Presets.delayedOff(ticks); }
 
-    /** A clock: a {@code pulse}-tick pulse every {@code period} ticks, from a timer that restarts itself. */
-    public static Program clock(int period, int pulse) {
-        return new Program(List.of(new Program.Rule(List.of(Condition.timer("t1", true, false)), Action.pulse(15, pulse))), Action.keep(),
-            List.of(new Program.Rule(List.of(Condition.timer("t1", false, true)), Action.start("t1", period))));
-    }
+    public static Program clock(int period, int pulse) { return Presets.clock(period, pulse); }
 
     /**
      * The lock: the Logic Block at (x, y, z), a stone block on its west, north and east sides with a button on the far

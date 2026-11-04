@@ -48,6 +48,12 @@ Logic Block items keep their rules: older programs are read and upgraded automat
    **Tab** accepts it.
 6. **Save**. The block's output changes within a tick or two.
 
+**Copy**, **Paste** and **Presets** (top of the editor): Copy puts the rules on your clipboard as one line of text
+(`logicblocks:...`), to paste into another Logic Block or share with someone; Paste loads them. Presets has
+ready-made rules to start from: a sorter station, a latch, a door that closes itself, a clock, a counter, the
+combination lock, and each part of the machines in [docs/BUILDS.md](docs/BUILDS.md). Pasting or picking a preset
+only changes the editor; the block changes when you Save.
+
 **Things to build:** crafters, a super smelter and shulker loaders, each one command away ([docs/BUILDS.md](docs/BUILDS.md)); an item sorter that also sorts tools and never jams on a full chest: one Logic Block per item
 ([docs/SORTER.md](docs/SORTER.md); operators in creative mode can have it built for them with `/logic demo sorter`).
 

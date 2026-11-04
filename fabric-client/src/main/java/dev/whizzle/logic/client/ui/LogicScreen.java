@@ -40,7 +40,7 @@ public final class LogicScreen extends Screen {
 	private static IdCompletion blockIds, itemIds;
 
 	private final Messages.Open open;
-	private final Draft draft;
+	private Draft draft;
 	private Snapshot snapshot, previous;
 	/** Which list is shown on the left, and the selected rule in each. */
 	private boolean alsoTab;
@@ -96,6 +96,10 @@ public final class LogicScreen extends Screen {
 		addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose()).pos(cw - 56, 4).size(50, 18).build());
 		addRenderableWidget(Button.builder(Component.literal("Labels"), b -> dev.whizzle.logic.client.LogicClient.openSettings(this))
 			.pos(cw - 164, 4).size(50, 18).build());
+		addRenderableWidget(Button.builder(Component.literal("Presets"), b -> minecraft.gui.setScreen(new PresetScreen(this)))
+			.pos(cw - 216, 4).size(48, 18).build()).active = edit;
+		addRenderableWidget(Button.builder(Component.literal("Paste"), b -> paste()).pos(cw - 256, 4).size(38, 18).build()).active = edit;
+		addRenderableWidget(Button.builder(Component.literal("Copy"), b -> copy()).pos(cw - 294, 4).size(36, 18).build());
 
 		// Tabs: Output | Also
 		int half = (listW - 2) / 2;
@@ -458,6 +462,44 @@ public final class LogicScreen extends Screen {
 		return snapshot.containers().get(m.from.ordinal()) != null && snapshot.containers().get(m.to.ordinal()) != null && m.from != m.to;
 	}
 
+	// ---- copy, paste, presets ----
+
+	/** Puts the rules being edited on the clipboard as one line of text ("logicblocks:..."), to paste into another block or share. */
+	private void copy() {
+		Draft.Built built = build();
+		if (built.problem() != null) { status = "Fix this before copying: " + built.problem(); statusColor = RED; return; }
+		minecraft.keyboardHandler.setClipboard(built.program().toText());
+		status = "Copied. Paste into another Logic Block's editor, or share the text.";
+		statusColor = GREEN;
+	}
+
+	private void paste() {
+		Program p;
+		try { p = Program.fromText(minecraft.keyboardHandler.getClipboard()); }
+		catch (IllegalArgumentException e) { status = e.getMessage() + ". Copy rules with the Copy button first."; statusColor = RED; return; }
+		replace(p, "the copied rules");
+	}
+
+	/** Replaces the rules being edited with {@code p}, after asking if there's anything to lose. Nothing is saved until Save. */
+	void replace(Program p, String what) {
+		if (draft.rules.isEmpty() && draft.also.isEmpty()) { use(p, what); return; }
+		minecraft.gui.setScreen(new ConfirmScreen(yes -> {
+			if (yes) use(p, what);
+			minecraft.gui.setScreen(this);
+		}, Component.literal("Replace these rules with " + what + "?"), Component.literal("Nothing changes on the block until you Save."),
+			Component.literal("Replace"), Component.literal("Cancel")));
+	}
+
+	private void use(Program p, String what) {
+		draft = new Draft(p);
+		selected = 0; selectedAlso = 0;
+		alsoTab = draft.rules.isEmpty() && !draft.also.isEmpty();
+		dirty = true;
+		status = "Loaded " + what + ". Check the sides and items, then Save.";
+		statusColor = GOLD;
+		rebuildWidgets();
+	}
+
 	// ---- saving and closing ----
 
 	private Draft.Built build() {
@@ -520,7 +562,7 @@ public final class LogicScreen extends Screen {
 		int x0 = rightX();
 		g.text(font, "Logic Block", 6, 9, AQUA);
 		String out = "Output " + snapshot.output() + "   by " + open.owner() + "   " + open.x() + " " + open.y() + " " + open.z();
-		g.text(font, font.plainSubstrByWidth(out, cw - 244), 76, 9, GRAY);
+		g.text(font, font.plainSubstrByWidth(out, cw - 374), 76, 9, GRAY);
 		if (!alsoTab) g.text(font, "Otherwise", 6, height - 19, WHITE);
 		List<Draft.Rule> list = list();
 		if (list.isEmpty()) {
