@@ -91,7 +91,7 @@ class MachinesTest {
 
     @Test void everyMachineProgramIsValid() {
         for (Program p : List.of(Machines.ironCrafter(), Machines.rocketCrafter(1), Machines.rocketCrafter(3), Machines.smelterInput(), Machines.smelterService(),
-                Machines.shulkerBrain(true), Machines.shulkerBrain(false), Machines.shulkerFire(Side.DOWN, Machines.BOX_MISSING),
+                Machines.shulkerBrain(true), Machines.shulkerBrain(false), Machines.shulkerDispense(),
                 Machines.shulkerFire(Side.NORTH, Machines.BOX_DONE))) {
             assertNull(p.problem(), p.describe().toString());
             assertEquals(p, Program.decode(p.encode()));

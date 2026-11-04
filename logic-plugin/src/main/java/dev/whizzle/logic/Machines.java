@@ -198,6 +198,15 @@ public final class Machines {
     }
 
     /**
+     * LB-D: like {@link #shulkerFire} for "missing", but only while the dispenser (west of it) has a box in it, so an
+     * empty dispenser isn't clicked every second; it fires as soon as the hopper above refills it (idea: the owner).
+     */
+    public static Program shulkerDispense() {
+        return new Program(List.of(new Program.Rule(List.of(Condition.signal(Side.DOWN, Op.EQ, BOX_MISSING), Condition.timer("t1", false, true),
+            Condition.fill(Side.WEST, Op.NE, 0)), List.of(Action.pulse(15, 6), Action.start("t1", 20)))), Action.keep());
+    }
+
+    /**
      * Box spot S at (x + 1, y + 1, z + 2). Above it a dispenser facing down places boxes (fed from the chest two above
      * it through a hopper). South of it a piston facing north breaks them and pushes the dropped box north, where it
      * falls (between glass on three sides) into the catch hopper at (x + 1, y, z + 1), which passes it west into the output chest. Under S: the unloader's
@@ -224,7 +233,7 @@ public final class Machines {
         // (glass, so the output chest under one of them still opens).
         for (int[] g : new int[][]{{0, 2}, {0, 1}, {2, 1}, {1, 0}}) w.getBlockAt(x + g[0], y + 1, z + g[1]).setType(Material.GLASS);
         List<Block> lbs = new ArrayList<>();
-        lbs.add(logic(m, w.getBlockAt(x + 2, y + 2, z + 2), shulkerFire(Side.DOWN, BOX_MISSING), owner, name));
+        lbs.add(logic(m, w.getBlockAt(x + 2, y + 2, z + 2), shulkerDispense(), owner, name));
         lbs.add(logic(m, w.getBlockAt(x + 2, y + 1, z + 2), shulkerBrain(loader), owner, name));
         lbs.add(logic(m, w.getBlockAt(x + 2, y + 1, z + 3), shulkerFire(Side.NORTH, BOX_DONE), owner, name));
         List<Block> inputs = new ArrayList<>(List.of(boxes));

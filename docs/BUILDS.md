@@ -116,7 +116,7 @@ The Logic Blocks talk by redstone strength. The **brain** (LB-C), east of the sp
 | Logic Block | Rules |
 |---|---|
 | LB-P, south of the brain | If/Else: **Signal** North = 15 and **Timer** T1 is not running -> Pulse 15 for 6 ticks, then Start T1 for 1 second; otherwise Keep. Fires the piston, and again every second if the box is still there. |
-| LB-D, above the brain | the same with **Signal** Down = 7: places the next box, and tries again every second while the dispenser is empty |
+| LB-D, above the brain | the same with **Signal** Down = 7 and **Fill** West != 0 (the dispenser has a box): places the next box, and fires again as soon as the dispenser is refilled, without clicking while it's empty |
 | brain (loader) | also When: always -> Move `*` from East to West: fills the box from the input chest |
 
 **Speed:** the loader puts one item in every 8 ticks (one hopper's speed), so a box of 27 unstackable items takes
