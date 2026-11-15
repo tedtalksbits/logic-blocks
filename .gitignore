@@ -7,3 +7,5 @@ run/*.jar
 .tools/
 .paper/
 run/client-mods/
+# VS Code Java build output
+bin/
