@@ -100,6 +100,9 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - Put anything that needs the owner's decision at the top of your report, clearly marked. Keep reports short; no
   "•" separators.
 - Test on a real Paper server before claiming redstone behaviour works. MockBukkit doesn't simulate redstone.
+- Kickoffs, mockups and draft art live in the owner's central folder
+  `C:\Users\tedan\Documents\software\Claude outputs\<project>\`, never inside this (or any) project's repo. Copy
+  only what the project needs into the repo.
 
 ## Building and testing
 
