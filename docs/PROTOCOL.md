@@ -1,4 +1,4 @@
-# Client <-> server protocol (v3)
+# Client <-> server protocol (v4)
 
 Plugin messages on `logicblocks:*` channels. Encoding is Minecraft's `FriendlyByteBuf` style: VarInt, big-endian
 Int32, Bool (1 byte), String (VarInt byte length + UTF-8), Bytes (VarInt length + raw). Both sides use
@@ -15,7 +15,11 @@ Int32, Bool (1 byte), String (VarInt byte length + UTF-8), Bytes (VarInt length 
 | `logicblocks:close` | C->S | (empty) |
 | `logicblocks:query` | C->S | Int32 x, y, z (since plugin 0.2.0 / client 0.3.0) |
 | `logicblocks:is` | S->C | Int32 x, y, z, Bool is a Logic Block |
+| `logicblocks:chunk` | S->C | Int32 chunk x, z, VarInt n (0-4096), n x VarInt packed position (since protocol 4) |
+| `logicblocks:chunks` | C->S | VarInt n (1-64), n x (Int32 chunk x, z) (since protocol 4) |
 
+Protocol 4 (plugin 0.5.0, client 0.6.0) adds chunk lists, so the mod can draw Logic Blocks: `model/ChunkList`
+encodes both messages (a packed position is x and z within the chunk, 4 bits each, and y + 2048 shifted left 8).
 Protocol 3 (plugin 0.4.0, client 0.5.0) carries program format 3 and snapshots with counters and timers. Protocol 2
 (plugin 0.3.0, client 0.4.0) carried program format 2; protocol 1 carried format 1.
 
@@ -40,6 +44,13 @@ count + each distance in tenths of a block, VarInt current output, VarInt (match
 last check (bit per timer), and for each side in the order above VarInt (fill + 1), 0 meaning no container.
 
 ## Behaviour
+
+- **Chunk lists** go only to players whose `hello` carried the plugin's protocol number. Right after the server sends
+  a chunk to such a player (`PlayerChunkLoadEvent`) it sends that chunk's Logic Blocks, if it has any (no list means
+  none). When a Logic Block is placed or removed, every such player who has the chunk gets its new list, empty
+  included. Chunks the client had before the welcome it asks about with `chunks` (64 at a time); the server answers
+  only for chunks the player has, and only those with Logic Blocks. Each list replaces what the client knew about
+  that chunk.
 
 - The client sends `hello` once the server announces the channels; a different protocol number makes the client
   refuse to open the editor and say the mod needs updating.

@@ -8,11 +8,12 @@ import java.util.List;
 
 /** The client side of docs/PROTOCOL.md: channel names and message encodings (pure Java, unit-tested). */
 public final class Messages {
-	public static final int PROTOCOL = 3;   // must match ClientBridge.PROTOCOL; 2: program format 2 (v2 rules); 3: counters and timers
+	/** Must match ClientBridge.PROTOCOL. 2: program format 2 (v2 rules); 3: counters and timers; 4: chunk lists (drawing Logic Blocks). */
+	public static final int PROTOCOL = 4;
 	public static final String HELLO = "hello", WELCOME = "welcome", OPEN = "open", SAVE = "save", RESULT = "result", LIVE = "live", CLOSE = "close",
-		QUERY = "query", IS = "is";
-	public static final List<String> CLIENTBOUND = List.of(WELCOME, OPEN, RESULT, LIVE, IS);
-	public static final List<String> SERVERBOUND = List.of(HELLO, SAVE, CLOSE, QUERY);
+		QUERY = "query", IS = "is", CHUNK = "chunk", CHUNKS = "chunks";
+	public static final List<String> CLIENTBOUND = List.of(WELCOME, OPEN, RESULT, LIVE, IS, CHUNK);
+	public static final List<String> SERVERBOUND = List.of(HELLO, SAVE, CLOSE, QUERY, CHUNKS);
 
 	private Messages() {}
 

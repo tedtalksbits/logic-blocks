@@ -226,7 +226,24 @@ public final class SelfTestPlugin extends JavaPlugin {
         // 14. Machines (/logic demo iron-crafter, rocket-crafter, super-smelter, shulker-loader, shulker-unloader), side by side.
         machines();
 
-        // 15. The mod's creative tab: its items must be real Logic Blocks that stack with crafted ones.
+        // 15. Items from before plugin 0.5.0 (no model string) are upgraded where players meet them.
+        steps.add(new Step("item upgrade: an old Logic Block item gets the model string and then stacks with new ones", () -> { }, 1, () -> {
+            ItemStack old = LogicItem.create(dev.whizzle.logic.model.Presets.lock());
+            old.unsetData(io.papermc.paper.datacomponent.DataComponentTypes.CUSTOM_MODEL_DATA);
+            if (old.isSimilar(LogicItem.create(dev.whizzle.logic.model.Presets.lock()))) return "the old item already stacks: the test proves nothing";
+            if (!LogicItem.upgrade(old)) return "not upgraded";
+            if (!old.isSimilar(LogicItem.create(dev.whizzle.logic.model.Presets.lock()))) return "upgraded but still doesn't stack: " + Bukkit.getUnsafe().serializeItemAsJson(old);
+            if (LogicItem.upgrade(old)) return "upgraded twice";
+            if (LogicItem.upgrade(new ItemStack(Material.DAYLIGHT_DETECTOR))) return "a plain daylight detector was changed";
+            org.bukkit.inventory.Inventory chest = Bukkit.createInventory(null, 27);
+            ItemStack old2 = LogicItem.create(null);
+            old2.unsetData(io.papermc.paper.datacomponent.DataComponentTypes.CUSTOM_MODEL_DATA);
+            chest.setItem(4, old2);
+            LogicItem.upgrade(chest);
+            return chest.getItem(4).isSimilar(LogicItem.create(null)) ? null : "a container's item wasn't upgraded";
+        }));
+
+        // 16. The mod's creative tab: its items must be real Logic Blocks that stack with crafted ones.
         steps.add(new Step("creative tab: an item built the way the mod's tab builds it is a real Logic Block and stacks with a fresh one (blank + every preset)", () -> { }, 1, () -> {
             report.add("INFO a fresh Logic Block: " + Bukkit.getUnsafe().serializeItemAsJson(LogicItem.create(null)));
             List<dev.whizzle.logic.model.Program> programs = new ArrayList<>();
@@ -242,7 +259,7 @@ public final class SelfTestPlugin extends JavaPlugin {
             return null;
         }));
 
-        // 15. Load: many busy blocks, timed.
+        // 17. Load: many busy blocks, timed.
         steps.add(new Step("load: 400 blocks x 8 rules x 3 conditions", this::buildLoad, 4, this::measureLoad));
 
         String only = System.getProperty("logic.selftest.only", "");
@@ -757,6 +774,11 @@ public final class SelfTestPlugin extends JavaPlugin {
         components.add("minecraft:custom_name", name);
         components.add("minecraft:lore", lore);
         components.addProperty("minecraft:custom_data", data.toString());
+        com.google.gson.JsonObject model = new com.google.gson.JsonObject();
+        com.google.gson.JsonArray strings = new com.google.gson.JsonArray();
+        strings.add(LogicItem.MODEL);
+        model.add("strings", strings);
+        components.add("minecraft:custom_model_data", model);
         com.google.gson.JsonObject item = new com.google.gson.JsonObject();
         item.addProperty("id", "minecraft:daylight_detector");
         item.addProperty("count", 1);

@@ -2,5 +2,5 @@ plugins { base }
 
 allprojects {
     group = "dev.whizzle.logic"
-    version = "0.4.1"
+    version = "0.5.0"
 }

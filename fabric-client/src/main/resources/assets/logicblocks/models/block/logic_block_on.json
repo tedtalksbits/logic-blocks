@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/template_daylight_detector",
+  "textures": {
+    "top": "logicblocks:block/logic_block_top_on",
+    "side": "logicblocks:block/logic_block_side_on"
+  }
+}

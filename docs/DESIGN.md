@@ -128,6 +128,22 @@ The item carries the program too (`logicblocks:program` on the item), so breakin
 handles Paper's `PlayerPickBlockEvent`: it picks a Logic Block item (one with the same rules first), never a plain
 detector; in creative it hands out a blank Logic Block, or with Ctrl a copy carrying the block's rules.
 
+## The Logic Block's look
+
+Players with the mod see a Logic Block with its own texture; everyone else still sees a daylight detector. Paper
+can't add blocks, so this is a per-position model swap in the mod, the way Glowing Glass draws its glass:
+
+- The server sends each modded player the Logic Blocks in every chunk it sends them, and pushes a chunk's new list
+  when one is placed or removed (`docs/PROTOCOL.md`). The mod keeps the lists (`LogicBlockCache`).
+- The mod wraps every daylight detector block model after baking (Fabric's model loading and renderer APIs). At a
+  listed position it emits the Logic Block model instead; anywhere else the daylight detector's own. So no other
+  daylight detector changes, which was the reason we didn't have a texture before.
+- Lit or not comes from the block's own `power` state, which is the Logic Block's output (the plugin sets it): the
+  client already has it, so the look follows the output with no extra messages.
+- The shape stays the daylight detector's (the server still treats the block as one: outline, hitbox, sounds).
+- Items: the plugin gives Logic Block items a custom model data string, and the mod's item definition for the
+  daylight detector picks the Logic Block model by it (any other daylight detector item falls back to vanilla).
+
 ## Side labels
 
 The client mod draws N, E, S, W over the Logic Block you're looking at. Players had no way to tell the sides apart

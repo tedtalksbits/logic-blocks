@@ -43,7 +43,36 @@ public final class LogicItem {
         meta.lore(lore);
         meta.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
+        setModel(item);
         return item;
+    }
+
+    /** The custom model data string the mod's item definition picks the Logic Block look by. */
+    public static final String MODEL = "logicblocks:logic_block";
+
+    private static void setModel(ItemStack item) {
+        item.setData(io.papermc.paper.datacomponent.DataComponentTypes.CUSTOM_MODEL_DATA,
+            io.papermc.paper.datacomponent.item.CustomModelData.customModelData().addString(MODEL).build());
+    }
+
+    /**
+     * Gives a Logic Block item made before plugin 0.5.0 its model string (so the mod draws it, and it stacks with new
+     * ones). Returns whether it changed anything.
+     */
+    public static boolean upgrade(ItemStack item) {
+        if (!is(item)) return false;
+        var cmd = item.getData(io.papermc.paper.datacomponent.DataComponentTypes.CUSTOM_MODEL_DATA);
+        if (cmd != null && cmd.strings().contains(MODEL)) return false;
+        setModel(item);
+        return true;
+    }
+
+    /** Upgrades every Logic Block item in {@code inv} ({@link #upgrade}). */
+    public static void upgrade(org.bukkit.inventory.Inventory inv) {
+        ItemStack[] contents = inv.getContents();
+        boolean changed = false;
+        for (ItemStack it : contents) changed |= upgrade(it);
+        if (changed) inv.setContents(contents);
     }
 
     private static Component gray(String text) { return Component.text(text, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false); }

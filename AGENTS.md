@@ -48,10 +48,20 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   encoded program (`Program.toText`/`fromText`); Presets (`model/Presets`, shared) are the same programs the demos
   build (`Demos`/`Machines` delegate to them). Client-only UI, no protocol change; tests 58-61.
 - Demos only run in creative mode (they're free resources).
-- **Creative tab** (client 0.5.1, plugin 0.4.1): a "Logic Blocks" tab (`fabric-client/.../client/CreativeTab.java`)
+- **Logic Block texture** (plugin 0.5.0, client 0.6.0, protocol 4): the server sends each modded player every
+  chunk's Logic Blocks (`ChunkList`, `ClientBridge.onChunkSent/pushChunk`); the mod keeps them in
+  `LogicBlockCache` and `render/LogicBlockModel` (wrapping every daylight detector model after baking, Fabric
+  renderer API) emits `logicblocks:block/logic_block` or `_on` (power > 0) there. Items: LogicItem adds custom
+  model data string `logicblocks:logic_block`, and `assets/minecraft/items/daylight_detector.json` selects on it,
+  falling back to vanilla. Older items get the string when their holder joins or a container is opened
+  (`ItemUpgrade`). Your own placement is drawn at once (`UseBlockCallback` prediction, lapses after 2 s unless
+  the server confirms). Textures: `fabric-client/src/main/resources/assets/logicblocks/textures/block/`;
+  drafts A-D and their scripts in `Claude outputs\logic-blocks\textures\`. **Not seen in a game yet** (tests 64-70).
+- **Creative tab** (client 0.6.0, plugin 0.5.0; first built as 0.5.1/0.4.1, never released): a "Logic Blocks" tab (`fabric-client/.../client/CreativeTab.java`)
   with a blank Logic Block and one per preset. **Keep `CreativeTab.stack` and `LogicItem.create` in sync**: same
   components (custom_name aqua not italic, lore grey not italic, custom_data `PublicBukkitValues` with
-  `logicblocks:logic_block` 1b and `logicblocks:program` as a byte array), text shared through `model/ItemText`. The
+  `logicblocks:logic_block` 1b and `logicblocks:program` as a byte array, custom_model_data strings
+  [`logicblocks:logic_block`]), text shared through `model/ItemText`. The
   self-test's "creative tab" step rebuilds the tab's item as JSON (`creativeTabJson`) and checks it's a Logic Block
   that stacks with a fresh one; change all three together, or creative items stop working or stop stacking.
 - Editor UX (client 0.4.0, released in v0.3.0): Tab completes ids, a **hand** button, centred column (`MAX_WIDTH`,
@@ -87,7 +97,8 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 | Programs and state stored in the chunk's persistent data; the item carries the program when broken | Moves with the world save, runs only in loaded chunks like redstone |
 | Owner (and operators) edit by default; `editing: anyone` opens it | Owner's call |
 | v1 inputs: block on a side, signal on a side, items in an adjacent container, players nearby | Owner: "fine for v1" |
-| Sides shown by labels the mod draws, not a texture | Owner wants no visual change to any vanilla block; a texture would hit every daylight detector |
+| Sides shown by labels the mod draws | Readable from any angle; kept alongside the texture |
+| **The mod draws Logic Blocks with their own texture** (draft D: daylight detector wood base, quartz plate with a red "if" diamond and traces to each side's output port; lit while output > 0, on/off only), by swapping the daylight detector's model only where the server says a Logic Block is | Owner, 2026-11-15. Glowing Glass showed a per-position model swap changes no other daylight detector, which was the reason for no texture before. Same slab shape (the server still treats it as a daylight detector) |
 | Labels on by default, toggle key N, N/E/S/W only | Owner's call |
 | Actions beyond redstone are allowed if they pass the **five rules** (`docs/DESIGN.md`): only what vanilla can do, touching blocks only, no faster than vanilla, nothing from nothing, respects protection | Owner agreed (the goal is intuitive, programming-friendly redstone, not purity) |
 | Rules v2 model: If/Else list (first match) + When list (all true run); counters private per block | Owner: "that's clear", "private"; tab names chosen by the owner |
@@ -150,3 +161,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
 - `config.yml` merges new defaults into existing maps (`copyDefaults`), so changing recipe letters can leave an
   inconsistent recipe on an existing server; test with a fresh config.
 - In a Fabric 26.x `Screen`, don't call `extractBackground` yourself (crash: "blur once per frame").
+- `render/LogicBlockModel` runs on chunk-meshing threads: only read `LogicClient.BLOCKS` there (a concurrent map of
+  immutable per-chunk sets); predictions and chunk bookkeeping stay on the client thread.
+- The mod has no mixins. If one is ever added, copy Glowing Glass's `ci/mixin-audit` and its rule that mixins live
+  only in `client/mixin/` (a mixin class elsewhere broke Shulker Styles with a black screen).

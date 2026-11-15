@@ -105,12 +105,27 @@ Each command builds next to you (2 east, 2 south), stocked, in creative mode. Ri
 | 60 | **Presets**, pick "Door that closes itself", **Use**, **Save**. Button into the west side, door on the east | The preset's description and rules show before you pick it. The door opens on a press and closes 5 seconds later. |
 | 61 | Open a block you don't own (not an operator) | **Copy** works; **Paste** and **Presets** are greyed out. |
 
-## Tests: creative tab (client 0.5.1)
+## Tests: creative tab (client 0.6.0)
 
 | # | Do this | Expect |
 |---|---|---|
 | 62 | Creative inventory: open the **Logic Blocks** tab; then search `logic block`, and `lock` | The tab has a blank Logic Block and one per preset (their tooltips list the rules). Search finds them; `lock` finds the combination lock one. |
 | 63 | Take a blank one from the tab and craft (or `/logic give`) another; put them in one slot. Place one from the tab and right-click it | They stack. It's a working Logic Block (the editor opens). A preset one from the tab is placed already programmed. |
+
+## Tests: the Logic Block texture (plugin 0.5.0, client 0.6.0)
+
+Install both new jars (an older mod with the new plugin draws nothing new and says it needs updating when you open
+an editor).
+
+| # | Do this | Expect |
+|---|---|---|
+| 64 | Look at an existing Logic Block (from before the update) | It has the new look: wooden sides, quartz top with a dull red diamond and traces, a dull red dot on each side. A plain daylight detector next to it still looks vanilla. |
+| 65 | Give it a rule that outputs (or use `/logic demo lock` and open the door) | Lit while the output is above 0: the diamond, core, traces and side dots turn bright red; dull again at 0. A clock preset blinks. |
+| 66 | Place a new Logic Block | It looks like a Logic Block from the first frame (no daylight detector flash). Break it: it's gone at once. |
+| 67 | Logic Block items: in your inventory, in hand, dropped, in an item frame, in the creative tab | The Logic Block look (unlit). A plain daylight detector item looks vanilla. |
+| 68 | An old Logic Block item from before the update, in your inventory or a chest | After rejoining (inventory) or opening the chest it shows the new look and stacks with new ones. |
+| 69 | Walk away until Logic Blocks unload, come back; change dimension and back; rejoin | They have the new look each time. |
+| 70 | Join with the mod from 0.5.0 or earlier | Logic Blocks look like daylight detectors; opening one says the mod needs updating. |
 
 ## Please report
 

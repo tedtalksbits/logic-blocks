@@ -33,6 +33,7 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
             "anyone".equalsIgnoreCase(getConfig().getString("editing", "owner")));
         getServer().getPluginManager().registerEvents(manager, this);
         getServer().getPluginManager().registerEvents(bridge, this);
+        getServer().getPluginManager().registerEvents(new ItemUpgrade(), this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new PickBlock(manager), this);
         for (String c : ClientBridge.INCOMING) getServer().getMessenger().registerIncomingPluginChannel(this, c, bridge);

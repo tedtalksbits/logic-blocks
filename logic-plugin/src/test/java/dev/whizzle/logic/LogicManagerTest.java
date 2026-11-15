@@ -120,6 +120,38 @@ class LogicManagerTest {
         assertEquals(n.program(), old.program());
     }
 
+    @Test void modGetsChunkListsOnlyAfterAMatchingHello() {
+        long home = dev.whizzle.logic.model.ChunkList.key(0, 0);
+        bridge.chunkSent((p, k) -> k == home);
+        bridge.onPluginMessageReceived(ClientBridge.HELLO, sam, new Wire.Writer().varInt(ClientBridge.PROTOCOL - 1).bytes());
+        bridge.onPluginMessageReceived(ClientBridge.HELLO, alex, new Wire.Writer().varInt(ClientBridge.PROTOCOL).bytes());
+        assertTrue(bridge.ready(alex));
+        assertFalse(bridge.ready(sam), "an older mod gets no chunk lists");
+        sent.clear();
+        LogicNode n = place(alex, 3, 64, 3, LogicItem.create(null));
+        assertNotNull(n);
+        List<Sent> lists = sent.stream().filter(x -> x.channel().equals(ClientBridge.CHUNK)).toList();
+        assertEquals(1, lists.size(), "only the ready player who has the chunk");
+        assertEquals(alex.getUniqueId(), lists.get(0).to());
+        dev.whizzle.logic.model.ChunkList list = dev.whizzle.logic.model.ChunkList.decode(lists.get(0).data());
+        assertEquals(List.of(dev.whizzle.logic.model.ChunkList.pack(3, 64, 3)), list.packed());
+        assertEquals(0, list.cx());
+
+        sent.clear();
+        server.getPluginManager().callEvent(new BlockBreakEvent(world.getBlockAt(3, 64, 3), alex));
+        assertEquals(List.of(), dev.whizzle.logic.model.ChunkList.decode(sent.stream().filter(x -> x.channel().equals(ClientBridge.CHUNK)).reduce((a, b) -> b).orElseThrow().data()).packed(), "gone: an empty list");
+
+        place(alex, 5, 70, 9, LogicItem.create(null));
+        sent.clear();
+        bridge.onPluginMessageReceived(ClientBridge.CHUNKS, alex, dev.whizzle.logic.model.ChunkList.request(List.of(home, dev.whizzle.logic.model.ChunkList.key(4, 4))));
+        List<Sent> answers = sent.stream().filter(x -> x.channel().equals(ClientBridge.CHUNK)).toList();
+        assertEquals(1, answers.size(), "only chunks the player has, and only ones with Logic Blocks");
+        assertEquals(List.of(dev.whizzle.logic.model.ChunkList.pack(5, 70, 9)), dev.whizzle.logic.model.ChunkList.decode(answers.get(0).data()).packed());
+        sent.clear();
+        bridge.onPluginMessageReceived(ClientBridge.CHUNKS, sam, dev.whizzle.logic.model.ChunkList.request(List.of(home)));
+        assertTrue(sent.isEmpty(), "not ready: no answer");
+    }
+
     @Test void demosOnlyWorkInCreative() {
         alex.setOp(true);
         alex.setGameMode(GameMode.SURVIVAL);

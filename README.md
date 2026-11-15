@@ -58,7 +58,8 @@ only changes the editor; the block changes when you Save.
 ([docs/SORTER.md](docs/SORTER.md); operators in creative mode can have it built for them with `/logic demo sorter`).
 
 Breaking a Logic Block drops it **with its rules**, so you can move it or make copies by placing it again.
-In creative, the mod adds a **Logic Blocks** tab: a blank one and one programmed with each preset (creative search
+With the mod, Logic Blocks have **their own look** (a quartz top with a red "if" diamond, lit while the output is
+above 0); without it they look like daylight detectors. In creative, the mod adds a **Logic Blocks** tab: a blank one and one programmed with each preset (creative search
 finds them too).
 **Middle-click** on a Logic Block picks a Logic Block from your inventory (one with the same rules if you have it),
 never a plain daylight detector; in creative it gives you one, and **Ctrl + middle-click** gives a copy with that

@@ -15,6 +15,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.component.ItemLore;
 
 import java.util.ArrayList;
@@ -26,11 +27,14 @@ import java.util.List;
  * stack here has exactly the components the plugin's {@code LogicItem.create} gives one: custom_name "Logic Block"
  * (aqua, not italic), lore (grey, not italic, text from {@link ItemText}), and custom_data
  * {@code {PublicBukkitValues:{"logicblocks:logic_block":1b, "logicblocks:program":[B;...]}}} (the program only when
- * there is one). The server then treats a stack from the tab as a real Logic Block, and it stacks with crafted ones.
+ * there is one), and custom_model_data strings ["logicblocks:logic_block"] (what the mod's item definition draws by). The server then treats a stack from the tab as a real Logic Block, and it stacks with crafted ones.
  * Keep this and LogicItem in step: the self-test's "creative tab" step builds this same JSON and checks both.
  */
 public final class CreativeTab {
 	private CreativeTab() {}
+
+	/** The item's custom model data string (LogicItem.MODEL): the mod's item definition draws the Logic Block by it. */
+	public static final String MODEL = "logicblocks:logic_block";
 
 	public static ItemStack stack(Program program) {
 		ItemStack s = new ItemStack(Items.DAYLIGHT_DETECTOR);
@@ -44,6 +48,7 @@ public final class CreativeTab {
 		CompoundTag root = new CompoundTag();
 		root.put("PublicBukkitValues", values);
 		s.set(DataComponents.CUSTOM_DATA, CustomData.of(root));
+		s.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(MODEL), List.of()));
 		return s;
 	}
 

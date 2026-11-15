@@ -217,7 +217,7 @@ class DraftTest {
 		assertEquals(1, in.int32()); assertEquals(2, in.int32()); assertEquals(3, in.int32());
 		assertEquals(sample(), Program.decode(in.bytes(Program.MAX_BYTES)));
 		assertEquals(2, Messages.welcome(new Wire.Writer().varInt(2).bytes()));
-		assertEquals(3, Messages.PROTOCOL, "program format 3 (counters and timers) needs protocol 3 on both sides");
+		assertEquals(4, Messages.PROTOCOL, "protocol 4 (chunk lists) on both sides: ClientBridge.PROTOCOL");
 		byte[] openV2 = new Wire.Writer().int32(0).int32(0).int32(0).bool(true).utf("Alex").bytes(v2().encode()).bytes(snap.encode()).bytes();
 		assertEquals(v2(), Messages.open(openV2).program());
 	}

@@ -51,6 +51,19 @@ public final class LogicManager implements Listener {
     }
 
     public void onEvaluated(Consumer<LogicNode> listener) { this.evaluated = listener; }
+
+    /** Told (world, chunk key) when a Logic Block appears or goes, so the mod can be told what to draw. */
+    private java.util.function.BiConsumer<UUID, Long> changed = (w, c) -> { };
+    public void onChanged(java.util.function.BiConsumer<UUID, Long> listener) { this.changed = listener; }
+
+    /** The Logic Blocks loaded in chunk (cx, cz) of world {@code w}, as packed positions ({@code ChunkList.pack}). */
+    public List<Integer> inChunk(UUID w, int cx, int cz) {
+        List<Integer> out = new ArrayList<>();
+        for (LogicNode.Key k : nodes.keySet())
+            if (k.world().equals(w) && k.x() >> 4 == cx && k.z() >> 4 == cz) out.add(dev.whizzle.logic.model.ChunkList.pack(k.x(), k.y(), k.z()));
+        java.util.Collections.sort(out);
+        return out;
+    }
     public long now() { return tick; }
     public Collection<LogicNode> nodes() { return Collections.unmodifiableCollection(nodes.values()); }
     public Optional<LogicNode> at(Block block) { return Optional.ofNullable(nodes.get(LogicNode.Key.of(block))); }
@@ -118,6 +131,7 @@ public final class LogicManager implements Listener {
         if (block.getBlockData() instanceof org.bukkit.block.data.type.DaylightDetector d && d.isInverted()) { d.setInverted(false); block.setBlockData(d, false); }
         setPower(block, 0);
         save(node);
+        changed.accept(node.key.world(), dev.whizzle.logic.model.ChunkList.key(node.key.x() >> 4, node.key.z() >> 4));
         return node;
     }
 
@@ -132,6 +146,7 @@ public final class LogicManager implements Listener {
     public void remove(LogicNode node) {
         nodes.remove(node.key);
         erase(node);
+        changed.accept(node.key.world(), dev.whizzle.logic.model.ChunkList.key(node.key.x() >> 4, node.key.z() >> 4));
     }
 
     public int countInChunk(Block block) {

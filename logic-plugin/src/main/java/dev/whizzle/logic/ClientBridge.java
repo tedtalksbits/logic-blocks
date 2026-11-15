@@ -1,5 +1,6 @@
 package dev.whizzle.logic;
 
+import dev.whizzle.logic.model.ChunkList;
 import dev.whizzle.logic.model.Program;
 import dev.whizzle.logic.model.Wire;
 import net.kyori.adventure.text.Component;
@@ -24,12 +25,15 @@ import java.util.*;
  * client streams nothing but edits back, and every save is validated here.
  */
 public final class ClientBridge implements PluginMessageListener, Listener {
-    public static final int PROTOCOL = 3;   // 2: program format 2 (v2 rules); 3: counters and timers (program format 3, snapshot memory)
+    /** 2: program format 2 (v2 rules); 3: counters and timers (program format 3, snapshot memory); 4: chunk lists (the mod draws Logic Blocks). */
+    public static final int PROTOCOL = 4;
     public static final String HELLO = "logicblocks:hello", WELCOME = "logicblocks:welcome", OPEN = "logicblocks:open",
         SAVE = "logicblocks:save", RESULT = "logicblocks:result", LIVE = "logicblocks:live", CLOSE = "logicblocks:close",
-        QUERY = "logicblocks:query", IS = "logicblocks:is";
-    public static final List<String> INCOMING = List.of(HELLO, SAVE, CLOSE, QUERY);
-    public static final List<String> OUTGOING = List.of(WELCOME, OPEN, RESULT, LIVE, IS);
+        QUERY = "logicblocks:query", IS = "logicblocks:is", CHUNK = "logicblocks:chunk", CHUNKS = "logicblocks:chunks";
+    public static final List<String> INCOMING = List.of(HELLO, SAVE, CLOSE, QUERY, CHUNKS);
+    public static final List<String> OUTGOING = List.of(WELCOME, OPEN, RESULT, LIVE, IS, CHUNK);
+    /** Chunk requests have their own budget: a joining player asks about a view distance's worth, 64 at a time. */
+    private static final int CHUNK_REQUESTS_PER_SECOND = 40;
     /** Editing reach, in blocks from the block's centre. */
     public static final double REACH = 8;
     private static final int REQUESTS_PER_SECOND = 10;
@@ -46,6 +50,12 @@ public final class ClientBridge implements PluginMessageListener, Listener {
     private final Map<UUID, LogicNode.Key> watching = new HashMap<>();
     private final Map<UUID, long[]> rate = new HashMap<>();
     private final Map<UUID, long[]> queryRate = new HashMap<>();
+    private final Map<UUID, long[]> chunkRate = new HashMap<>();
+    /** Players whose mod said hello with this protocol: they get chunk lists. */
+    private final Set<UUID> ready = new HashSet<>();
+    /** Whether the player's client has a chunk (Paper's {@code Player.isChunkSent}); tests substitute it. */
+    private java.util.function.BiPredicate<Player, Long> chunkSent = Player::isChunkSent;
+    void chunkSent(java.util.function.BiPredicate<Player, Long> test) { this.chunkSent = test; }
 
     private final java.util.function.Function<LogicNode, dev.whizzle.logic.model.Snapshot> sensors;
 
@@ -59,6 +69,7 @@ public final class ClientBridge implements PluginMessageListener, Listener {
         this.manager = manager;
         this.outbox = outbox;
         this.anyoneEdits = anyoneEdits;
+        manager.onChanged(this::pushChunk);
     }
 
     public boolean canEdit(Player p, LogicNode n) {
@@ -117,8 +128,45 @@ public final class ClientBridge implements PluginMessageListener, Listener {
 
     // ---- messages ----
 
+    // ---- what the mod draws: Logic Block positions, chunk by chunk ----
+
+    /** A chunk reached the player: send its Logic Blocks if it has any (no list means none). */
+    @EventHandler
+    public void onChunkSent(io.papermc.paper.event.packet.PlayerChunkLoadEvent e) {
+        if (!ready.contains(e.getPlayer().getUniqueId())) return;
+        sendChunk(e.getPlayer(), e.getChunk().getX(), e.getChunk().getZ(), false);
+    }
+
+    /** A Logic Block appeared or went: send the chunk's new list to every modded player who has the chunk. */
+    void pushChunk(UUID world, long chunkKey) {
+        for (UUID id : ready) {
+            Player p = org.bukkit.Bukkit.getPlayer(id);
+            if (p == null || !p.getWorld().getUID().equals(world) || !chunkSent.test(p, chunkKey)) continue;
+            sendChunk(p, ChunkList.keyX(chunkKey), ChunkList.keyZ(chunkKey), true);
+        }
+    }
+
+    void sendChunk(Player p, int cx, int cz, boolean evenIfEmpty) {
+        List<Integer> packed = manager.inChunk(p.getWorld().getUID(), cx, cz);
+        if (packed.isEmpty() && !evenIfEmpty) return;
+        if (packed.size() > ChunkList.MAX_BLOCKS) packed = packed.subList(0, ChunkList.MAX_BLOCKS);
+        outbox.send(p, CHUNK, new ChunkList(cx, cz, packed).encode());
+    }
+
+    /** The mod asks about chunks it had before the welcome; answered only for chunks the player actually has. */
+    void chunks(Player p, List<Long> keys) {
+        for (long k : keys) if (chunkSent.test(p, k)) sendChunk(p, ChunkList.keyX(k), ChunkList.keyZ(k), false);
+    }
+
+    public boolean ready(Player p) { return ready.contains(p.getUniqueId()); }
+
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        if (channel.equals(CHUNKS)) {
+            if (!ready.contains(player.getUniqueId()) || !allow(chunkRate, player, CHUNK_REQUESTS_PER_SECOND)) return;
+            try { chunks(player, ChunkList.readRequest(message)); } catch (IllegalArgumentException ignored) { }
+            return;
+        }
         if (channel.equals(QUERY)) {
             if (!allow(queryRate, player, QUERIES_PER_SECOND)) return;
             try {
@@ -133,7 +181,12 @@ public final class ClientBridge implements PluginMessageListener, Listener {
         try {
             Wire.Reader in = new Wire.Reader(message);
             switch (channel) {
-                case HELLO -> { in.varInt(); in.end(); outbox.send(player, WELCOME, new Wire.Writer().varInt(PROTOCOL).bytes()); }
+                case HELLO -> {
+                    int theirs = in.varInt();
+                    in.end();
+                    if (theirs == PROTOCOL) ready.add(player.getUniqueId()); else ready.remove(player.getUniqueId());
+                    outbox.send(player, WELCOME, new Wire.Writer().varInt(PROTOCOL).bytes());
+                }
                 case CLOSE -> { in.end(); watching.remove(player.getUniqueId()); }
                 case SAVE -> {
                     int x = in.int32(), y = in.int32(), z = in.int32();
@@ -188,5 +241,8 @@ public final class ClientBridge implements PluginMessageListener, Listener {
     }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { watching.remove(e.getPlayer().getUniqueId()); rate.remove(e.getPlayer().getUniqueId()); queryRate.remove(e.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent e) {
+        UUID id = e.getPlayer().getUniqueId();
+        watching.remove(id); rate.remove(id); queryRate.remove(id); chunkRate.remove(id); ready.remove(id);
+    }
 }
