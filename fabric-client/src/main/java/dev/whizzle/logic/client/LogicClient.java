@@ -49,6 +49,7 @@ public final class LogicClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.JOIN.register((listener, sender, client) -> { serverProtocol = 0; SideLabelRenderer.reset(); });
 		ClientPlayConnectionEvents.DISCONNECT.register((listener, client) -> SideLabelRenderer.reset());
 
+		CreativeTab.register();
 		Settings.load();
 		toggleLabels = KeyMappingHelper.registerKeyMapping(
 			new KeyMapping("key.logicblocks.side_labels", InputConstants.Type.KEYBOARD, InputConstants.KEY_N, CATEGORY));

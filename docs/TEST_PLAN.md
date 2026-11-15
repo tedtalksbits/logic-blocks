@@ -105,6 +105,13 @@ Each command builds next to you (2 east, 2 south), stocked, in creative mode. Ri
 | 60 | **Presets**, pick "Door that closes itself", **Use**, **Save**. Button into the west side, door on the east | The preset's description and rules show before you pick it. The door opens on a press and closes 5 seconds later. |
 | 61 | Open a block you don't own (not an operator) | **Copy** works; **Paste** and **Presets** are greyed out. |
 
+## Tests: creative tab (client 0.5.1)
+
+| # | Do this | Expect |
+|---|---|---|
+| 62 | Creative inventory: open the **Logic Blocks** tab; then search `logic block`, and `lock` | The tab has a blank Logic Block and one per preset (their tooltips list the rules). Search finds them; `lock` finds the combination lock one. |
+| 63 | Take a blank one from the tab and craft (or `/logic give`) another; put them in one slot. Place one from the tab and right-click it | They stack. It's a working Logic Block (the editor opens). A preset one from the tab is placed already programmed. |
+
 ## Please report
 
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the

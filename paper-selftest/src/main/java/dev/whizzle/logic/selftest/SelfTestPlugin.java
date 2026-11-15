@@ -226,6 +226,22 @@ public final class SelfTestPlugin extends JavaPlugin {
         // 14. Machines (/logic demo iron-crafter, rocket-crafter, super-smelter, shulker-loader, shulker-unloader), side by side.
         machines();
 
+        // 15. The mod's creative tab: its items must be real Logic Blocks that stack with crafted ones.
+        steps.add(new Step("creative tab: an item built the way the mod's tab builds it is a real Logic Block and stacks with a fresh one (blank + every preset)", () -> { }, 1, () -> {
+            report.add("INFO a fresh Logic Block: " + Bukkit.getUnsafe().serializeItemAsJson(LogicItem.create(null)));
+            List<dev.whizzle.logic.model.Program> programs = new ArrayList<>();
+            programs.add(dev.whizzle.logic.model.Program.EMPTY);
+            for (dev.whizzle.logic.model.Presets.Preset p : dev.whizzle.logic.model.Presets.all()) programs.add(p.program());
+            for (dev.whizzle.logic.model.Program program : programs) {
+                ItemStack fromTab = Bukkit.getUnsafe().deserializeItemFromJson(creativeTabJson(program));
+                ItemStack fresh = LogicItem.create(program);
+                if (!LogicItem.is(fromTab)) return "not recognised as a Logic Block: " + Bukkit.getUnsafe().serializeItemAsJson(fromTab);
+                if (!LogicItem.program(fromTab).equals(program)) return "reads as a different program: " + LogicItem.program(fromTab).describe();
+                if (!fromTab.isSimilar(fresh)) return "wouldn't stack with a fresh one: " + Bukkit.getUnsafe().serializeItemAsJson(fromTab) + " vs " + Bukkit.getUnsafe().serializeItemAsJson(fresh);
+            }
+            return null;
+        }));
+
         // 15. Load: many busy blocks, timed.
         steps.add(new Step("load: 400 blocks x 8 rules x 3 conditions", this::buildLoad, 4, this::measureLoad));
 
@@ -707,6 +723,46 @@ public final class SelfTestPlugin extends JavaPlugin {
             at(px - 2, 0).setType(Material.REDSTONE_BLOCK);
             getServer().getScheduler().runTaskLater(this, () -> at(px - 2, 0).setType(Material.AIR), 10);
         }, 16, () -> expect("wire", wire(px + 1, 0), 15)));
+    }
+
+    // ---- creative tab ----
+
+    /**
+     * The item exactly as fabric-client's {@code CreativeTab.stack} builds it, as item JSON: the same three components,
+     * keys, values and types (custom_name and lore as text with colour and italic false; custom_data as SNBT with the
+     * marker as a byte and the program as a byte array). Change this when CreativeTab or LogicItem changes.
+     */
+    static com.google.gson.JsonObject creativeTabJson(dev.whizzle.logic.model.Program program) {
+        com.google.gson.JsonObject name = new com.google.gson.JsonObject();
+        name.addProperty("text", dev.whizzle.logic.model.ItemText.NAME);
+        name.addProperty("color", "aqua");
+        name.addProperty("italic", false);
+        com.google.gson.JsonArray lore = new com.google.gson.JsonArray();
+        for (String line : dev.whizzle.logic.model.ItemText.lore(program)) {
+            com.google.gson.JsonObject l = new com.google.gson.JsonObject();
+            l.addProperty("text", line);
+            l.addProperty("color", "gray");
+            l.addProperty("italic", false);
+            lore.add(l);
+        }
+        StringBuilder data = new StringBuilder("{PublicBukkitValues:{\"logicblocks:logic_block\":1b");
+        if (!program.equals(dev.whizzle.logic.model.Program.EMPTY)) {
+            data.append(",\"logicblocks:program\":[B;");
+            byte[] bytes = program.encode();
+            for (int i = 0; i < bytes.length; i++) data.append(i == 0 ? "" : ",").append(bytes[i]).append('B');
+            data.append(']');
+        }
+        data.append("}}");
+        com.google.gson.JsonObject components = new com.google.gson.JsonObject();
+        components.add("minecraft:custom_name", name);
+        components.add("minecraft:lore", lore);
+        components.addProperty("minecraft:custom_data", data.toString());
+        com.google.gson.JsonObject item = new com.google.gson.JsonObject();
+        item.addProperty("id", "minecraft:daylight_detector");
+        item.addProperty("count", 1);
+        item.add("components", components);
+        item.addProperty("DataVersion", Bukkit.getUnsafe().getDataVersion());
+        return item;
     }
 
     // ---- machines ----

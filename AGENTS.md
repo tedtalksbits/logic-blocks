@@ -48,6 +48,12 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   encoded program (`Program.toText`/`fromText`); Presets (`model/Presets`, shared) are the same programs the demos
   build (`Demos`/`Machines` delegate to them). Client-only UI, no protocol change; tests 58-61.
 - Demos only run in creative mode (they're free resources).
+- **Creative tab** (client 0.5.1, plugin 0.4.1): a "Logic Blocks" tab (`fabric-client/.../client/CreativeTab.java`)
+  with a blank Logic Block and one per preset. **Keep `CreativeTab.stack` and `LogicItem.create` in sync**: same
+  components (custom_name aqua not italic, lore grey not italic, custom_data `PublicBukkitValues` with
+  `logicblocks:logic_block` 1b and `logicblocks:program` as a byte array), text shared through `model/ItemText`. The
+  self-test's "creative tab" step rebuilds the tab's item as JSON (`creativeTabJson`) and checks it's a Logic Block
+  that stacks with a fresh one; change all three together, or creative items stop working or stop stacking.
 - Editor UX (client 0.4.0, released in v0.3.0): Tab completes ids, a **hand** button, centred column (`MAX_WIDTH`,
   set to 1080 by the owner).
 - v2 sorter: one Logic Block per station (`/logic demo sorter`, `Demos.moveSorter`): no wrong items even at double

@@ -1,5 +1,6 @@
 package dev.whizzle.logic;
 
+import dev.whizzle.logic.model.ItemText;
 import dev.whizzle.logic.model.Program;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -32,15 +33,13 @@ public final class LogicItem {
     public static ItemStack create(Program program) {
         ItemStack item = new ItemStack(BLOCK);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Logic Block", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+        // The mod's creative tab builds the same item (fabric-client CreativeTab): change both, and the self-test's
+        // "creative tab" step, together.
+        meta.displayName(Component.text(ItemText.NAME, NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
         List<Component> lore = new ArrayList<>();
-        if (program == null || program.equals(Program.EMPTY)) {
-            lore.add(gray("Place it, then right-click to program it."));
-        } else {
-            lore.add(gray("Programmed:"));
-            for (String line : program.describe()) lore.add(gray("  " + line));
+        for (String line : ItemText.lore(program)) lore.add(gray(line));
+        if (program != null && !program.equals(Program.EMPTY))
             meta.getPersistentDataContainer().set(PROGRAM_KEY, PersistentDataType.BYTE_ARRAY, program.encode());
-        }
         meta.lore(lore);
         meta.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
