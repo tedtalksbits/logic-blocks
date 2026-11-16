@@ -49,8 +49,7 @@ final class WorldInputs implements Engine.Inputs {
     @Override public int items(Side side, String id) {
         Map<String, Integer> counts = container(side);
         if (counts == null) return -1;
-        if (id.equals("*")) return counts.values().stream().mapToInt(Integer::intValue).sum();
-        return counts.getOrDefault(id, 0);
+        return dev.whizzle.logic.model.IdPattern.count(counts, id);
     }
 
     /** Item id → total count in the container on that side, or null if it isn't a container. */

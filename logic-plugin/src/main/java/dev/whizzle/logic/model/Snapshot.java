@@ -53,8 +53,7 @@ public record Snapshot(String[] blocks, int[] signals, List<Map<String, Integer>
         if (side == Side.ANY) return -1;
         Map<String, Integer> c = containers.get(side.ordinal());
         if (c == null) return -1;
-        if (id.equals("*")) return c.values().stream().mapToInt(Integer::intValue).sum();
-        return c.getOrDefault(id, 0);
+        return IdPattern.count(c, id);
     }
 
     @Override public int players(int radius) {

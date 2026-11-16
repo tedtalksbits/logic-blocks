@@ -192,6 +192,20 @@ class DraftTest {
 		}
 	}
 
+	@Test void patternsAreCheckedAgainstTheGameToo() {
+		Draft d = new Draft();
+		Draft.Rule r = new Draft.Rule();
+		r.conditions.get(0).id = "deepslate_*";
+		d.rules.add(r);
+		java.util.function.Predicate<String> game = id -> id.equals("deepslate_*") || id.equals("red_wool");
+		assertNull(d.build(game, game).problem());
+		assertEquals(Condition.block(Side.NORTH, true, "deepslate_*"), d.build(game, game).program().rules().get(0).conditions().get(0));
+		r.conditions.get(0).id = "nothing_*";
+		assertEquals("Rule 1: no block matches \"nothing_*\"", d.build(game, game).problem());
+		r.conditions.get(0).id = "nothing";
+		assertEquals("Rule 1: no block called \"nothing\"", d.build(game, game).problem());
+	}
+
 	@Test void cyclingWraps() {
 		assertEquals(Side.NORTH, Draft.next(List.of(Side.FACES), Side.DOWN));
 		assertEquals(Condition.Op.IS_NOT, Draft.next(List.of(Condition.Op.IS, Condition.Op.IS_NOT), Condition.Op.IS));

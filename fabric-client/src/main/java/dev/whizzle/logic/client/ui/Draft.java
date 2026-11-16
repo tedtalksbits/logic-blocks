@@ -114,6 +114,11 @@ public final class Draft {
 		}
 	}
 
+	/** "no block called x", or for a pattern "no block matches x*". */
+	static String unknown(String what, String id) {
+		return dev.whizzle.logic.model.IdPattern.isPattern(id) ? "no " + what + " matches \"" + id + "\"" : "no " + what + " called \"" + id + "\"";
+	}
+
 	/** A counter or timer id ("a" to "d", "t1" to "t4"), which isn't a block or item. */
 	static boolean memoryId(String id) { return Condition.counterIndex(id) >= 0 || Condition.timerIndex(id) >= 0; }
 
@@ -200,8 +205,8 @@ public final class Draft {
 		List<Condition> cs = new ArrayList<>();
 		for (Cond c : rule.conditions) {
 			Condition cond = c.toCondition();
-			if (cond.kind() == Condition.Kind.BLOCK && !knownBlock.test(cond.id())) return where + "no block called \"" + cond.id() + "\"";
-			if (cond.kind() == Condition.Kind.ITEMS && !cond.id().equals("*") && !knownItem.test(cond.id())) return where + "no item called \"" + cond.id() + "\"";
+			if (cond.kind() == Condition.Kind.BLOCK && !knownBlock.test(cond.id())) return where + unknown("block", cond.id());
+			if (cond.kind() == Condition.Kind.ITEMS && !cond.id().equals("*") && !knownItem.test(cond.id())) return where + unknown("item", cond.id());
 			cs.add(cond);
 		}
 		List<Action> actions = new ArrayList<>();
@@ -209,7 +214,7 @@ public final class Draft {
 		else if (rule.extras.isEmpty()) return where + "add something for it to do (+ Action)";
 		for (Extra m : rule.extras) {
 			Action a = m.toAction();
-			if (a.kind() == Action.Kind.MOVE && !a.id().equals("*") && !knownItem.test(a.id())) return where + "no item called \"" + a.id() + "\"";
+			if (a.kind() == Action.Kind.MOVE && !a.id().equals("*") && !knownItem.test(a.id())) return where + unknown("item", a.id());
 			actions.add(a);
 		}
 		out.add(new Program.Rule(cs, actions));

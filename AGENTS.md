@@ -48,7 +48,10 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   encoded program (`Program.toText`/`fromText`); Presets (`model/Presets`, shared) are the same programs the demos
   build (`Demos`/`Machines` delegate to them). Client-only UI, no protocol change; tests 58-61.
 - Demos only run in creative mode (they're free resources).
-- **Logic Block texture** (plugin 0.5.0, client 0.6.0, protocol 4): the server sends each modded player every
+- **Patterns** (plugin 0.5.1, client 0.6.1, protocol 4 unchanged): `*` wildcards in Block, Items and Move ids
+  (`model/IdPattern`: glob, shared). An older plugin refuses a pattern with its usual "Name a block" message.
+  Self-test "patterns" steps on real Paper; tests 71-73.
+- **Logic Block texture** (plugin 0.5.0, client 0.6.0, protocol 4, **released v0.5.0**): the server sends each modded player every
   chunk's Logic Blocks (`ChunkList`, `ClientBridge.onChunkSent/pushChunk`); the mod keeps them in
   `LogicBlockCache` and `render/LogicBlockModel` (wrapping every daylight detector model after baking, Fabric
   renderer API) emits `logicblocks:block/logic_block` or `_on` (power > 0) there. Items: LogicItem adds custom

@@ -127,6 +127,14 @@ an editor).
 | 69 | Walk away until Logic Blocks unload, come back; change dimension and back; rejoin | They have the new look each time. |
 | 70 | Join with the mod from 0.5.0 or earlier | Logic Blocks look like daylight detectors; opening one says the mod needs updating. |
 
+## Tests: patterns (plugin 0.5.1, client 0.6.1)
+
+| # | Do this | Expect |
+|---|---|---|
+| 71 | New block: **Block** North is `deepslate_*` -> Output 15. Put deepslate bricks, then deepslate tiles, then cobbled deepslate north of it | On for the bricks and tiles; off for cobbled deepslate (it doesn't start with `deepslate_`). `*deepslate*` would match all three. |
+| 72 | **Move** `*_ore` from Up to Down, a chest of mixed ores and stone above | Only the ores move. The editor's "now:" line counts every ore. |
+| 73 | Type `nothing_*` in a Block box and Save | "no block matches "nothing_*"". |
+
 ## Please report
 
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the

@@ -35,7 +35,7 @@ final class Mover {
         for (int slot : from.extractSlots()) {
             ItemStack stack = from.inv.getItem(slot);
             if (stack == null || stack.getType().isAir()) continue;
-            if (!a.id().equals("*") && !a.id().equals(WorldInputs.id(stack.getType()))) continue;
+            if (!dev.whizzle.logic.model.IdPattern.matches(a.id(), WorldInputs.id(stack.getType()))) continue;
             if (!from.canExtract(slot, stack)) continue;
             ItemStack one = stack.asOne();
             int target = to.slotFor(one);

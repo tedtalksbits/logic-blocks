@@ -506,7 +506,13 @@ public final class LogicScreen extends Screen {
 		return draft.build(id -> known(id, true), id -> known(id, false));
 	}
 
+	/** Whether the game has a block or item by this id, or for a pattern ("deepslate_*") any it fits. */
 	private static boolean known(String id, boolean block) {
+		if (dev.whizzle.logic.model.IdPattern.isPattern(id)) {
+			for (Identifier k : block ? BuiltInRegistries.BLOCK.keySet() : BuiltInRegistries.ITEM.keySet())
+				if (dev.whizzle.logic.model.IdPattern.matches(id, IdCompletion.shortId(k.toString()))) return true;
+			return false;
+		}
 		Identifier key = Identifier.tryParse(id);
 		if (key == null) return false;
 		return block ? BuiltInRegistries.BLOCK.containsKey(key) : BuiltInRegistries.ITEM.containsKey(key);

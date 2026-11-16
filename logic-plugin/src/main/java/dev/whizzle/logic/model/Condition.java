@@ -96,7 +96,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case BLOCK -> {
                 if (side == Side.ANY) return "Pick a side for the block check";
                 if (op.numeric()) return "Block checks use \"is\" or \"is not\"";
-                if (!validId(id)) return "Name a block, like red_wool";
+                if (!validId(id) && !IdPattern.valid(id)) return "Name a block, like red_wool, or a pattern, like deepslate_*";
             }
             case SIGNAL -> {
                 if (!op.numeric()) return "Signal checks compare a number (=, <, >...)";
@@ -105,7 +105,7 @@ public record Condition(Kind kind, Side side, Op op, String id, int number, int 
             case ITEMS -> {
                 if (side == Side.ANY) return "Pick the side the container is on";
                 if (!op.numeric()) return "Item checks compare a number";
-                if (!id.equals("*") && !validId(id)) return "Name an item, like coal, or * for any item";
+                if (!validId(id) && !IdPattern.valid(id)) return "Name an item, like coal, a pattern, like *_ore, or * for any item";
                 if (number < 0 || number > MAX_NUMBER) return "Item count is 0 to " + MAX_NUMBER;
             }
             case PLAYERS -> {

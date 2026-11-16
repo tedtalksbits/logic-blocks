@@ -226,7 +226,10 @@ public final class SelfTestPlugin extends JavaPlugin {
         // 14. Machines (/logic demo iron-crafter, rocket-crafter, super-smelter, shulker-loader, shulker-unloader), side by side.
         machines();
 
-        // 15. Items from before plugin 0.5.0 (no model string) are upgraded where players meet them.
+        // 15. Patterns: "deepslate_*" in a Move and a Block condition.
+        patterns();
+
+        // 15b. Items from before plugin 0.5.0 (no model string) are upgraded where players meet them.
         steps.add(new Step("item upgrade: an old Logic Block item gets the model string and then stacks with new ones", () -> { }, 1, () -> {
             ItemStack old = LogicItem.create(dev.whizzle.logic.model.Presets.lock());
             old.unsetData(io.papermc.paper.datacomponent.DataComponentTypes.CUSTOM_MODEL_DATA);
@@ -740,6 +743,38 @@ public final class SelfTestPlugin extends JavaPlugin {
             at(px - 2, 0).setType(Material.REDSTONE_BLOCK);
             getServer().getScheduler().runTaskLater(this, () -> at(px - 2, 0).setType(Material.AIR), 10);
         }, 16, () -> expect("wire", wire(px + 1, 0), 15)));
+    }
+
+    // ---- patterns ----
+
+    void patterns() {
+        int px = 1100;
+        w.setChunkForceLoaded(px >> 4, 0, true);
+        w.setChunkForceLoaded(px >> 4, -1, true);
+        steps.add(new Step("patterns: move deepslate_* takes only ids starting deepslate_; block deepslate_* matches any of them", () -> {
+            for (int x = px - 2; x <= px + 6; x++) for (int z = -2; z <= 2; z++) {
+                w.getBlockAt(x, Y - 1, z).setType(Material.STONE);
+                for (int y = Y; y < Y + 4; y++) w.getBlockAt(x, y, z).setType(Material.AIR);
+            }
+            w.getBlockAt(px, Y, 0).setType(Material.CHEST);
+            Block lb = w.getBlockAt(px, Y + 1, 0);
+            lb.setType(LogicItem.BLOCK);
+            manager.create(lb, Program.EMPTY.withAlso(List.of(new Program.Rule(List.of(), Action.move("deepslate_*", Side.UP, Side.DOWN)))), OWNER, "SelfTest");
+            Block top = w.getBlockAt(px, Y + 2, 0);
+            top.setType(Material.CHEST);
+            inv(top).addItem(new ItemStack(Material.COBBLESTONE, 4), new ItemStack(Material.DEEPSLATE_BRICKS, 3), new ItemStack(Material.COBBLED_DEEPSLATE, 3),
+                new ItemStack(Material.DEEPSLATE_TILES, 2));
+            node(px + 4, 0, new Program(List.of(rule(Action.set(15), Condition.block(Side.NORTH, true, "deepslate_*"))), Action.set(0)));
+            at(px + 4, -1).setType(Material.DEEPSLATE_TILE_STAIRS);
+            at(px + 5, 0).setType(Material.REDSTONE_WIRE);
+        }, 80, () -> {
+            Map<Material, Integer> moved = contents(w.getBlockAt(px, Y, 0)), left = contents(w.getBlockAt(px, Y + 2, 0));
+            if (!moved.equals(Map.of(Material.DEEPSLATE_BRICKS, 3, Material.DEEPSLATE_TILES, 2))) return "moved " + moved + ", left " + left;
+            if (!left.equals(Map.of(Material.COBBLESTONE, 4, Material.COBBLED_DEEPSLATE, 3))) return "left " + left;
+            return expect("wire (north is deepslate_tile_stairs)", wire(px + 5, 0), 15);
+        }));
+        steps.add(new Step("patterns: block deepslate_* stops matching for stone", () -> at(px + 4, -1).setType(Material.STONE), 8,
+            () -> expect("wire", wire(px + 5, 0), 0)));
     }
 
     // ---- creative tab ----
