@@ -344,14 +344,27 @@ public final class LogicScreen extends Screen {
 		box.setValue(value);
 		IdCompletion ids = ids(block);
 		box.setSuggestion(edit ? ids.suggestion(value) : null);
+		colour(box, value, block);
 		box.setResponder(v -> {
 			set.accept(v.trim().toLowerCase(Locale.ROOT));
 			if (!v.equals(value)) dirty = true;
 			box.setSuggestion(ids.suggestion(v));   // grey rest of the id; Tab accepts it
+			colour(box, v, block);
 		});
 		box.setEditable(edit);
 		if (edit) idBoxes.put(box, ids);
 		return x + w + 2;
+	}
+
+	/** Text colour of a pattern that fits something ("deepslate_*", "*"): it stands for many blocks or items, not one. */
+	static final int PATTERN = 0xFFD58CFF, PATTERN_UNEDITABLE = 0xFF8E64A8;
+
+	/** A working pattern shows in {@link #PATTERN}; a plain id, or a pattern that fits nothing, in the usual colour. */
+	private static void colour(EditBox box, String text, boolean block) {
+		String id = text.trim().toLowerCase(Locale.ROOT);
+		boolean pattern = dev.whizzle.logic.model.IdPattern.isPattern(id) && (id.equals("*") || (dev.whizzle.logic.model.IdPattern.valid(id) && known(id, block)));
+		box.setTextColor(pattern ? PATTERN : EditBox.DEFAULT_TEXT_COLOR);
+		box.setTextColorUneditable(pattern ? PATTERN_UNEDITABLE : 0xFF707070);
 	}
 
 	/** Every block or item id the game knows, for completion. */

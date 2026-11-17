@@ -103,7 +103,8 @@ action sets the output; the others, and all of a When rule's actions, are moves 
 
 **Patterns:** wherever you name a block or item (Block, Items, Move), `*` stands for any run of letters:
 `deepslate_*` is every block or item starting `deepslate_`, `*_ore` every ore, `*deepslate*` anything with
-"deepslate" in it, and `*` on its own anything. Items counts add up everything that fits.
+"deepslate" in it, and `*` on its own anything. Items counts add up everything that fits. In the editor a pattern that fits something shows in light purple, a plain
+name in white.
 
 *Otherwise* can output a number or **Keep**. Use Keep with Toggle and Pulse so they aren't overwritten when the
 input goes away. Example: a button feeding a repeater that points into the west side, `signal west turns on -> toggle

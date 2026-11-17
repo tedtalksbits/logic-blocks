@@ -133,7 +133,8 @@ an editor).
 |---|---|---|
 | 71 | New block: **Block** North is `deepslate_*` -> Output 15. Put deepslate bricks, then deepslate tiles, then cobbled deepslate north of it | On for the bricks and tiles; off for cobbled deepslate (it doesn't start with `deepslate_`). `*deepslate*` would match all three. |
 | 72 | **Move** `*_ore` from Up to Down, a chest of mixed ores and stone above | Only the ores move. The editor's "now:" line counts every ore. |
-| 73 | Type `nothing_*` in a Block box and Save | "no block matches "nothing_*"". |
+| 73 | Type `nothing_*` in a Block box and Save | It stays white while you type it (it fits nothing); Save says "no block matches "nothing_*"". |
+| 74 | Type `deepslate_*`, then `*`, then `deepslate_bricks` in a box | The two patterns turn light purple as soon as they fit something; the plain id is white. Same on a block you can only look at (dimmer). |
 
 ## Please report
 
