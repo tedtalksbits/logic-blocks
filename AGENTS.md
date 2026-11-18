@@ -49,7 +49,7 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   build (`Demos`/`Machines` delegate to them). Client-only UI, no protocol change; tests 58-61.
 - Demos only run in creative mode (they're free resources).
 - **Patterns** (plugin 0.5.1, client 0.6.1, protocol 4 unchanged): `*` wildcards in Block, Items and Move ids
-  (`model/IdPattern`: glob, shared), plus `#tags`, `!exclusions` and comma-separated terms (max 128 chars). Tags are
+  (`model/IdPattern`: glob, shared). Plugin 0.5.2 / client 0.6.2 add `#tags`, `!exclusions` and comma-separated terms (max 128 chars). Tags are
   looked up through `IdPattern.tags`, set per side: the plugin uses Bukkit tags, the client the registries' holders.
   An older plugin refuses a pattern with its usual "Name a block" message.
   Self-test "patterns" steps on real Paper; tests 71-80.
