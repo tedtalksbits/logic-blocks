@@ -29,4 +29,17 @@ class IdCompletionTest {
         assertTrue(ids.known("minecraft:dirt"));
         assertFalse(ids.known("dia"));
     }
+
+    @Test void lastTermAndTags() {
+        IdCompletion c = new IdCompletion(List.of("minecraft:stone", "minecraft:cobblestone"),
+            List.of("minecraft:slabs", "minecraft:logs", "minecraft:wooden_slabs"));
+        assertEquals("*stone*, !cobblestone", c.complete("*stone*, !cobb"), "completes the last term");
+        assertEquals("#slabs", c.complete("#sla"));
+        assertEquals("#slabs, !#wooden_slabs", c.complete("#slabs, !#woo"));
+        assertEquals("abs", c.suggestion("#sl"));
+        assertNull(c.complete("#slabs"), "already a whole tag");
+        assertNull(c.complete("stone, "), "empty last term");
+        assertTrue(c.knownTag("minecraft:logs"));
+        assertFalse(c.knownTag("planks"));
+    }
 }

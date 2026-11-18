@@ -775,6 +775,31 @@ public final class SelfTestPlugin extends JavaPlugin {
         }));
         steps.add(new Step("patterns: block deepslate_* stops matching for stone", () -> at(px + 4, -1).setType(Material.STONE), 8,
             () -> expect("wire", wire(px + 5, 0), 0)));
+        int qx = px + 10;
+        steps.add(new Step("patterns: move \"*stone*, #logs, !*cobblestone*\" takes stone, stone_bricks, oak_log; block \"#slabs, !*oak*\" matches a stone slab", () -> {
+            for (int x = qx - 2; x <= qx + 6; x++) for (int z = -2; z <= 2; z++) {
+                w.getBlockAt(x, Y - 1, z).setType(Material.STONE);
+                for (int y = Y; y < Y + 4; y++) w.getBlockAt(x, y, z).setType(Material.AIR);
+            }
+            w.getBlockAt(qx, Y, 0).setType(Material.CHEST);
+            Block lb = w.getBlockAt(qx, Y + 1, 0);
+            lb.setType(LogicItem.BLOCK);
+            manager.create(lb, Program.EMPTY.withAlso(List.of(new Program.Rule(List.of(), Action.move("*stone*, #logs, !*cobblestone*", Side.UP, Side.DOWN)))), OWNER, "SelfTest");
+            Block top = w.getBlockAt(qx, Y + 2, 0);
+            top.setType(Material.CHEST);
+            inv(top).addItem(new ItemStack(Material.STONE, 2), new ItemStack(Material.COBBLESTONE, 4), new ItemStack(Material.MOSSY_COBBLESTONE, 3),
+                new ItemStack(Material.STONE_BRICKS, 2), new ItemStack(Material.OAK_LOG, 5), new ItemStack(Material.OAK_SLAB, 1));
+            node(qx + 4, 0, new Program(List.of(rule(Action.set(15), Condition.block(Side.NORTH, true, "#slabs, !*oak*"))), Action.set(0)));
+            at(qx + 4, -1).setType(Material.SMOOTH_STONE_SLAB);
+            at(qx + 5, 0).setType(Material.REDSTONE_WIRE);
+        }, 80, () -> {
+            Map<Material, Integer> moved = contents(w.getBlockAt(qx, Y, 0)), left = contents(w.getBlockAt(qx, Y + 2, 0));
+            if (!moved.equals(Map.of(Material.STONE, 2, Material.STONE_BRICKS, 2, Material.OAK_LOG, 5))) return "moved " + moved + ", left " + left;
+            if (!left.equals(Map.of(Material.COBBLESTONE, 4, Material.MOSSY_COBBLESTONE, 3, Material.OAK_SLAB, 1))) return "left " + left;
+            return expect("wire (north is smooth_stone_slab)", wire(qx + 5, 0), 15);
+        }));
+        steps.add(new Step("patterns: block \"#slabs, !*oak*\" excludes an oak slab", () -> at(qx + 4, -1).setType(Material.OAK_SLAB), 8,
+            () -> expect("wire", wire(qx + 5, 0), 0)));
     }
 
     // ---- creative tab ----

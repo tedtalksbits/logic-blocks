@@ -37,6 +37,8 @@ public final class LogicScreen extends Screen {
 	private final List<Label> labels = new java.util.ArrayList<>();
 	/** Where each extra action's "now:" line starts. */
 	private final List<Integer> extraNowX = new java.util.ArrayList<>();
+	/** Where each condition's "now:" line starts: after its use/hand buttons, as placed by init. */
+	private final List<Integer> condNowX = new java.util.ArrayList<>();
 	private static IdCompletion blockIds, itemIds;
 
 	private final Messages.Open open;
@@ -86,6 +88,7 @@ public final class LogicScreen extends Screen {
 		idBoxes.clear();
 		labels.clear();
 		extraNowX.clear();
+		condNowX.clear();
 		listW = Math.clamp(cw / 4, 112, 180);
 		selected = Math.min(selected, Math.max(0, draft.rules.size() - 1));
 		selectedAlso = Math.min(selectedAlso, Math.max(0, draft.also.size() - 1));
@@ -163,7 +166,7 @@ public final class LogicScreen extends Screen {
 				case BLOCK -> {
 					x = cycle(x, y, 44, cond.side.label(), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
 					x = cycle(x, y, 40, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
-					x = text(x, y, 86, cond.id, v -> cond.id = v, edit, true);
+					x = text(x, y, 110, cond.id, v -> cond.id = v, edit, true);
 				}
 				case SIGNAL -> {
 					x = cycle(x, y, 44, sideLabel(cond.side), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
@@ -172,7 +175,7 @@ public final class LogicScreen extends Screen {
 				}
 				case ITEMS -> {
 					x = cycle(x, y, 44, cond.side.label(), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
-					x = text(x, y, 70, cond.id, v -> cond.id = v, edit, false);
+					x = text(x, y, 110, cond.id, v -> cond.id = v, edit, false);
 					x = cycle(x, y, 22, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
 					x = number(x, y, 34, cond.number, v -> cond.number = v, edit);
 				}
@@ -205,11 +208,14 @@ public final class LogicScreen extends Screen {
 			}
 			int index = c;
 			addRenderableWidget(Button.builder(Component.literal("x"), b -> { rule.conditions.remove(index); changed(); }).pos(x + 2, y).size(16, 18).build()).active = edit;
+			int nowX = x0 + 50;
 			if (edit && (cond.kind == Condition.Kind.BLOCK || cond.kind == Condition.Kind.ITEMS)) {
 				int bx = x0 + 48;
 				if (suggestion(cond) != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { cond.id = suggestion(cond); changed(); }).pos(bx, y + 20).size(28, 13).build()); bx += 30; }
-				handButton(bx, y + 20, cond.id, cond.kind == Condition.Kind.BLOCK, v -> cond.id = v);
+				if (handButton(bx, y + 20, cond.id, cond.kind == Condition.Kind.BLOCK, v -> cond.id = v)) bx += 32;
+				nowX = Math.max(nowX, bx + 2);
 			}
+			condNowX.add(nowX);
 			y += ROW;
 		}
 		Button addCond = addRenderableWidget(Button.builder(Component.literal("+ Condition"), b -> { rule.conditions.add(new Draft.Cond()); changed(); })
@@ -247,7 +253,7 @@ public final class LogicScreen extends Screen {
 				}
 				case STOP -> x = cycle(x, y, 26, Condition.memoryLabel(ex.id), edit, () -> ex.id = Draft.next(TIMER_IDS, ex.id));
 				default -> {
-					x = text(x, y, 70, ex.id, v -> ex.id = v, edit, false);
+					x = text(x, y, 100, ex.id, v -> ex.id = v, edit, false);
 					x = word(x, y, "from");
 					x = cycle(x, y, 40, ex.from.label(), edit, () -> ex.from = Draft.next(List.of(Side.FACES), ex.from));
 					x = word(x, y, "to");
@@ -260,8 +266,7 @@ public final class LogicScreen extends Screen {
 			if (ex.kind == Action.Kind.MOVE && edit) {
 				String use = moveSuggestion(ex);
 				if (use != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { ex.id = use; changed(); }).pos(lx, y + 20).size(28, 13).build()); lx += 30; }
-				String h = held(false);
-				if (h != null && !h.equals(ex.id)) { handButton(lx, y + 20, ex.id, false, v -> ex.id = v); lx += 32; }
+				if (handButton(lx, y + 20, ex.id, false, v -> ex.id = v)) lx += 32;
 			}
 			extraNowX.add(lx);
 			y += ROW;
@@ -340,7 +345,7 @@ public final class LogicScreen extends Screen {
 
 	private int text(int x, int y, int w, String value, Consumer<String> set, boolean edit, boolean block) {
 		EditBox box = addRenderableWidget(new EditBox(font, x, y, w, 18, Component.literal(block ? "block" : "item")));
-		box.setMaxLength(Condition.MAX_ID);
+		box.setMaxLength(dev.whizzle.logic.model.IdPattern.MAX);   // patterns can have several terms
 		box.setValue(value);
 		IdCompletion ids = ids(block);
 		box.setSuggestion(edit ? ids.suggestion(value) : null);
@@ -370,10 +375,12 @@ public final class LogicScreen extends Screen {
 	/** Every block or item id the game knows, for completion. */
 	private static IdCompletion ids(boolean block) {
 		if (block) {
-			if (blockIds == null) blockIds = new IdCompletion(BuiltInRegistries.BLOCK.keySet().stream().map(Identifier::toString).toList());
+			if (blockIds == null) blockIds = new IdCompletion(BuiltInRegistries.BLOCK.keySet().stream().map(Identifier::toString).toList(),
+				BuiltInRegistries.BLOCK.getTags().map(t -> t.key().location().toString()).toList());
 			return blockIds;
 		}
-		if (itemIds == null) itemIds = new IdCompletion(BuiltInRegistries.ITEM.keySet().stream().map(Identifier::toString).toList());
+		if (itemIds == null) itemIds = new IdCompletion(BuiltInRegistries.ITEM.keySet().stream().map(Identifier::toString).toList(),
+			BuiltInRegistries.ITEM.getTags().map(t -> t.key().location().toString()).toList());
 		return itemIds;
 	}
 
@@ -403,10 +410,12 @@ public final class LogicScreen extends Screen {
 	}
 
 	/** "hand" fills the box with what you hold; shown when that's different from the box. */
-	private void handButton(int x, int y, String current, boolean block, Consumer<String> set) {
+	/** Returns whether it added the button. */
+	private boolean handButton(int x, int y, String current, boolean block, Consumer<String> set) {
 		String h = held(block);
-		if (h == null || h.equals(current)) return;
+		if (h == null || h.equals(current)) return false;
 		addRenderableWidget(Button.builder(Component.literal("hand"), b -> { set.accept(h); changed(); }).pos(x, y).size(30, 13).build());
+		return true;
 	}
 
 	private void changed() { dirty = true; rebuildWidgets(); }
@@ -519,11 +528,15 @@ public final class LogicScreen extends Screen {
 		return draft.build(id -> known(id, true), id -> known(id, false));
 	}
 
-	/** Whether the game has a block or item by this id, or for a pattern ("deepslate_*") any it fits. */
+	/**
+	 * Whether the game has a block or item by this id, or for a pattern ("deepslate_*", "#slabs, !*oak*") whether every
+	 * tag it names exists and it fits at least one.
+	 */
 	private static boolean known(String id, boolean block) {
 		if (dev.whizzle.logic.model.IdPattern.isPattern(id)) {
+			for (String tag : dev.whizzle.logic.model.IdPattern.tagsIn(id)) if (!ids(block).knownTag(tag)) return false;
 			for (Identifier k : block ? BuiltInRegistries.BLOCK.keySet() : BuiltInRegistries.ITEM.keySet())
-				if (dev.whizzle.logic.model.IdPattern.matches(id, IdCompletion.shortId(k.toString()))) return true;
+				if (dev.whizzle.logic.model.IdPattern.matches(id, IdCompletion.shortId(k.toString()), block)) return true;
 			return false;
 		}
 		Identifier key = Identifier.tryParse(id);
@@ -600,14 +613,10 @@ public final class LogicScreen extends Screen {
 				if (c.kind == Condition.Kind.PLAYERS) g.text(font, "within", x0 + 50, y + 5, GRAY);
 				Check k = check(c);
 				String line = "now: " + k.reading() + (k.ok() ? "  (true)" : "  (false)");
-				int lx = x0 + 50;
-				if ((c.kind == Condition.Kind.BLOCK || c.kind == Condition.Kind.ITEMS) && open.editable()) {
-					int bx = x0 + 48;
-					if (suggestion(c) != null) bx += 30;
-					String h = held(c.kind == Condition.Kind.BLOCK);
-					if (h != null && !h.equals(c.id)) bx += 32;
-					lx = Math.max(lx, bx + 2);
-				}
+				// The buttons under the row were placed by init: start the line after them (computing it again here could
+				// disagree with what init placed, and the text then ran over the "hand" button).
+				int ci = rule.conditions.indexOf(c);
+				int lx = ci >= 0 && ci < condNowX.size() ? condNowX.get(ci) : x0 + 50;
 				g.text(font, font.plainSubstrByWidth(line, cw - lx - 6), lx, y + 23, k.ok() ? GREEN : RED);
 				y += ROW;
 			}

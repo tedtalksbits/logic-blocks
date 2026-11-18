@@ -67,7 +67,7 @@ public record Action(Kind kind, int strength, int ticks, String id, Side from, S
         if (kind == Kind.MOVE) {
             if (from == Side.ANY || to == Side.ANY) return "Pick the sides to move from and to";
             if (from == to) return "Move from one side to a different side";
-            if (!Condition.validId(id) && !IdPattern.valid(id)) return "Name an item to move, like coal, a pattern, like *_ore, or * for any item";
+            if (!Condition.validId(id) && !IdPattern.valid(id)) return "Name an item to move, like coal, a pattern, like *_ore, a tag, like #logs, or * for any item";
             return null;
         }
         if (kind.counter()) {

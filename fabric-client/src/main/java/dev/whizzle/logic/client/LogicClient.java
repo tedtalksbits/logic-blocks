@@ -71,6 +71,15 @@ public final class LogicClient implements ClientModInitializer {
 		UseBlockCallback.EVENT.register(LogicClient::predictPlacement);
 
 		CreativeTab.register();
+		// Tags in names ("#slabs") for the editor's live preview and checks: the game's own tags, as the server sent them.
+		dev.whizzle.logic.model.IdPattern.tags = (block, tag, id) -> {
+			net.minecraft.resources.Identifier t = net.minecraft.resources.Identifier.tryParse(tag), i = net.minecraft.resources.Identifier.tryParse(id);
+			if (t == null || i == null) return false;
+			if (block) return net.minecraft.core.registries.BuiltInRegistries.BLOCK.getOptional(i)
+				.map(b -> b.builtInRegistryHolder().is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BLOCK, t))).orElse(false);
+			return net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(i)
+				.map(it -> it.builtInRegistryHolder().is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, t))).orElse(false);
+		};
 		Settings.load();
 		toggleLabels = KeyMappingHelper.registerKeyMapping(
 			new KeyMapping("key.logicblocks.side_labels", InputConstants.Type.KEYBOARD, InputConstants.KEY_N, CATEGORY));

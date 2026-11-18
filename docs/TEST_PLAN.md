@@ -135,6 +135,12 @@ an editor).
 | 72 | **Move** `*_ore` from Up to Down, a chest of mixed ores and stone above | Only the ores move. The editor's "now:" line counts every ore. |
 | 73 | Type `nothing_*` in a Block box and Save | It stays white while you type it (it fits nothing); Save says "no block matches "nothing_*"". |
 | 74 | Type `deepslate_*`, then `*`, then `deepslate_bricks` in a box | The two patterns turn light purple as soon as they fit something; the plain id is white. Same on a block you can only look at (dimmer). |
+| 75 | **Move** `*stone*, !*cobblestone*` Up to Down; above, a chest of stone, stone bricks, cobblestone, mossy cobblestone | Stone and stone bricks move; both cobblestones stay. The text is light purple. |
+| 76 | **Block** North is `#slabs, !*oak*` -> Output 15. Put a stone slab north, then an oak slab | On for the stone slab, off for the oak slab. |
+| 77 | **Move** `#logs` Up to Down with logs and planks above | Only the logs move. |
+| 78 | In a box type `#sla` and press Tab; then `*stone*, !cobb` and Tab | Grey text offers `bs`; Tab makes `#slabs`. The second becomes `*stone*, !cobblestone`. |
+| 79 | Type `#not_a_tag` and Save | It stays white; Save says no block or item matches. |
+| 80 | Open the editor on a block with an **Items** condition (with "hand" button) and a long name like `*cobblestone*` | The "now:" text sits right of the hand button, never over it; the name fits in its box. |
 
 ## Please report
 

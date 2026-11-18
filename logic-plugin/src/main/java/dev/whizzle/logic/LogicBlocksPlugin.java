@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -34,6 +35,14 @@ public class LogicBlocksPlugin extends JavaPlugin implements Listener, TabExecut
         getServer().getPluginManager().registerEvents(manager, this);
         getServer().getPluginManager().registerEvents(bridge, this);
         getServer().getPluginManager().registerEvents(new ItemUpgrade(), this);
+        // Tags in names ("#slabs"): the server's own block and item tags.
+        dev.whizzle.logic.model.IdPattern.tags = (block, tag, id) -> {
+            NamespacedKey key = NamespacedKey.fromString(tag);
+            Material m = Material.matchMaterial(id);
+            if (key == null || m == null) return false;
+            org.bukkit.Tag<Material> t = getServer().getTag(block ? org.bukkit.Tag.REGISTRY_BLOCKS : org.bukkit.Tag.REGISTRY_ITEMS, key, Material.class);
+            return t != null && t.isTagged(m);
+        };
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new PickBlock(manager), this);
         for (String c : ClientBridge.INCOMING) getServer().getMessenger().registerIncomingPluginChannel(this, c, bridge);

@@ -64,7 +64,7 @@ public final class Engine {
                     case BLOCK -> {
                         String id = in.block(cond.side());
                         reading = id;
-                        ok = cond.op() == Condition.Op.IS ? IdPattern.matches(cond.id(), id) : !IdPattern.matches(cond.id(), id);
+                        ok = cond.op() == Condition.Op.IS ? IdPattern.matches(cond.id(), id, true) : !IdPattern.matches(cond.id(), id, true);
                     }
                     case SIGNAL -> {
                         int s = in.signal(cond.side());

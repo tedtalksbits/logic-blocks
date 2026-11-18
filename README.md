@@ -103,8 +103,11 @@ action sets the output; the others, and all of a When rule's actions, are moves 
 
 **Patterns:** wherever you name a block or item (Block, Items, Move), `*` stands for any run of letters:
 `deepslate_*` is every block or item starting `deepslate_`, `*_ore` every ore, `*deepslate*` anything with
-"deepslate" in it, and `*` on its own anything. Items counts add up everything that fits. In the editor a pattern that fits something shows in light purple, a plain
-name in white.
+"deepslate" in it, and `*` on its own anything. A tag starts with `#`: `#logs`, `#slabs`, `#wool` (the game's own
+block and item tags, `minecraft:` unless you name another namespace). Several terms go with commas, and `!` leaves one
+out: `*stone*, !*cobblestone*` is everything with "stone" in it except cobblestones; `#slabs, !*oak*` every slab but
+oak. Items counts add up everything that fits. In the editor a pattern that fits something shows in light purple, a
+plain name in white; Tab completes the last term, tags too.
 
 *Otherwise* can output a number or **Keep**. Use Keep with Toggle and Pulse so they aren't overwritten when the
 input goes away. Example: a button feeding a repeater that points into the west side, `signal west turns on -> toggle
