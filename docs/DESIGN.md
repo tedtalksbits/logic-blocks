@@ -190,8 +190,26 @@ The principles: teach at the moment of need (the four symbols show only while a 
 (a chest with three deepslate kinds offers `*deepslate*`), show instead of describing (icons of what a name matches),
 and never take the keyboard away (a name box stays a text box).
 
-Build order: 1. the name list (released as v0.6.0, below); 2. lamps and option lists; 3. a map of the sides; 4. the menu, the tab
-line and a start screen for a new block; 5. docs and screenshots.
+Build order: 1. the name list (released as v0.6.0); 2. lamps and option lists; 3. a map of the sides; 4. the menu,
+the tab line and a start screen for a new block (2 to 4 built together, client 0.8.0).
+
+**How the editor is built now.** `EditorLayout` (pure Java) works out every element: buttons, boxes, words, lamps,
+the icons under a name, with its place, its text and what it does to the `Draft`. `LogicScreen` only turns those
+into the game's widgets and runs what pops up. `EditorPaint` draws the editor's own parts over the widgets, through
+`Painter`; `Readings` holds what the draft would do right now (the same `Engine` as the server); `OptionPanel` is the
+list a button opens and `SideMap` the map of sides. Because the layout is pure, `EditorLayoutTest` checks at five
+screen sizes, for every kind of row, that nothing overlaps and nothing leaves the screen: the class of bug that
+reached the owner before (text drawn over a button) is now caught without the game. Positions are never worked out
+twice, once to place a widget and again to draw next to it.
+
+- A button that opens a list has no text of its own: the editor draws its label, an arrow and (for a side) the icon
+  of the block there. The scroll wheel steps such a button, except when the rule is taller than the screen: then the
+  wheel scrolls the rule, so that scrolling can't change a rule by accident.
+- The right side scrolls by whole rows; a row is in view completely or not at all.
+- The map of sides is a compass (north at the top), not turned to the player; "you" marks the side the player stands
+  on instead. On a screen too narrow for it a side opens a plain list.
+- A lamp replaces each "now: ..." line; pointing at it shows the reading. The icons under a name replace the old
+  check of whether a name fits anything ("matches nothing" in red).
 
 **Step 1, the name list.** `NameText` takes a typed name apart, `NamePicker` works out what to show (completions for
 the term being typed, what's really in the container or on the side and whether the name fits each, a pattern to

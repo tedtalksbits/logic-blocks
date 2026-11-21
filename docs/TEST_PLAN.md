@@ -140,7 +140,7 @@ an editor).
 | 77 | **Move** `#logs` Up to Down with logs and planks above | Only the logs move. |
 | 78 | In a box type `#sla` and press Tab; then `*stone*, !cobb` and Tab | Grey text offers `bs`, and the list under the box has `#slabs` first, marked Tab; Tab makes `#slabs`. The second becomes `*stone*, !cobblestone`. |
 | 79 | Type `#not_a_tag` and Save | It stays white; Save says no block or item matches. |
-| 80 | Open the editor on a block with an **Items** condition (with "hand" button) and a long name like `*cobblestone*` | The "now:" text sits right of the hand button, never over it; the name fits in its box. |
+| 80 | Open the editor on a block with an **Items** condition and a long name like `*cobblestone*` | Nothing under the name overlaps: icons, then the "use" and "hand" buttons; the name fits in its box. |
 
 ## Tests: editor v2, step 1: the name list (plugin 0.6.0, client 0.7.0)
 
@@ -166,6 +166,30 @@ The mockups are in `Claude outputs\logic-blocks\ui-v2\ui-v2.html`.
 
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the
 recipe cost.
+
+## Tests: editor v2, the rest (plugin 0.7.0, client 0.8.0, not released yet)
+
+The whole editor is laid out by new code, so please look at every row kind once. Where an older test above says
+"now: ..." under a row, point at that row's lamp instead; where it says a button steps to the next value, the button
+now opens a list. `Claude outputs\logic-blocks\ui-v2\` has pictures of what the layout code produces
+(`editor-*.png`, `popup-*.png`): not the game's font or icons, but the same positions.
+
+| # | Do this | Expect |
+|---|---|---|
+| 96 | Place a new Logic Block and open it | "What should this block do?" with three cards (Clock, Sorter station, Latch), **+ Start empty** and **All presets**. A card fills the editor with that preset ("Loaded ...", not saved yet). **+ Start empty** gives the usual first rule. |
+| 97 | Look under the tabs; switch tabs | A grey line: "first true rule sets the output" on If/Else, "every true rule runs" on When (two lines on a narrow window, never over the rules). |
+| 98 | A rule "Block North is red_wool"; put red wool north, then break it | The lamp in front of the condition, the one by "Rule 1" and the one on the rule in the list turn green, then dark red, within a moment. No "now:" text anywhere. |
+| 99 | Point at each lamp | A small panel: "now: red_wool" and "true" (or "not true"). On the rule in the list: "true: sets the output now", "true, but an earlier rule comes first" or "not true now". On a Move: where it takes from and puts to. |
+| 100 | Click **Block** | A list of all eight kinds, each with a few words; the current one marked in blue. Click **Items**: the row changes. Esc, or a click elsewhere, closes a list without changing anything. Arrow keys and Enter work in it. |
+| 101 | Click the other buttons that have a small arrow: **is**, **>=**, **Output**, **Move**, a counter **A**, a timer **T1**, **turns on**, **running**, **Otherwise** | Each opens its list. Counters show their value ("= 3"), timers "running, 2s left" or "not running". The Otherwise list opens upward. |
+| 102 | Click a side button (**North**) | A map: North at the top, West and East beside "this block", South below, Up and Down on the right, each with the block that's there and its icon; "you" marks the side you're standing on. On a Signal or Change row there's also **Any side**, and sides with power say "signal 12". Click a side: the button changes and shows that side's block icon. |
+| 103 | With the pointer on a button that has an arrow, turn the scroll wheel | It steps to the next or previous option, as the old buttons did on a click. (Only when the rule fits the screen: see 107.) |
+| 104 | Rows with a name (Block, Items, Move): look under the name | Up to four icons of what the name matches and "+N" for the rest; "matches nothing" or "no such item" in red for a name that's wrong. Right of them **use ...** (or a pattern, "*deepslate* 3 kinds") and **hand**. Point at the icons: the same matches panel as on the name. |
+| 105 | Click the button with three bars, next to Save | **Copy**, **Paste**, **Presets**, **Labels**, each with a few words. They do what the old buttons did. On a block you can't edit, Paste and Presets are grey and don't respond. |
+| 106 | Open a block you can't edit | Lamps, icons and chips show; every button with an arrow is grey and doesn't open; no "use" or "hand". |
+| 107 | Raise the GUI scale (or shrink the window) until a rule with three conditions and two actions doesn't fit | "scroll for the rest" at the bottom right; the wheel over the rule scrolls it, whole rows at a time (never half a row), "scroll back up" at the end. Nothing is drawn over the Otherwise row or the status line. With eight rules the list's rows get shorter instead of running into "Otherwise". |
+| 108 | Each row kind once: Block, Signal, Items, Players, Change, Counter, Timer, Fill; actions Move, Add, Subtract, Set, Start, Stop; Then **Pulse** | Nothing overlaps or is cut off; words like "within", "for", "ticks (20 = 1 s)", "from", "to", "seconds" sit between the right widgets. |
+| 109 | Everything from tests 81 to 95 again (the name list, chips, matches, Delete) | Still works; the list under a name doesn't open while a button's list is open. |
 
 ## ⚠️ Known limits and decisions for you
 

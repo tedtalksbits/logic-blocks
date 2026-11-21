@@ -114,7 +114,7 @@ public final class NamePanel {
 		}
 	}
 
-	private static void frame(Painter p, int x, int y, int w, int h, int back, int edge) {
+	static void frame(Painter p, int x, int y, int w, int h, int back, int edge) {
 		p.fill(x, y, x + w, y + h, edge);
 		p.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xFF000000);
 		p.fill(x + 1, y + 1, x + w - 1, y + h - 1, back);

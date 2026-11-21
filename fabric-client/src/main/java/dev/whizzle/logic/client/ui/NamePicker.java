@@ -199,8 +199,23 @@ public final class NamePicker {
 			else if (exclusions && !without.isEmpty() && IdPattern.matches(without, id, block)) { if (out++ < 3) leftOut.add(id); }
 		}
 		Summary s = new Summary(List.copyOf(all), out, List.copyOf(leftOut));
-		if (SUMMARIES.size() < 256) SUMMARIES.put(key, s);
+		if (SUMMARIES.size() >= 256) SUMMARIES.clear();   // typing makes many names; start over rather than stop remembering
+		SUMMARIES.put(key, s);
 		return s;
+	}
+
+	/** The icons under a name: the first few things it matches and how many more, or what's wrong with it. */
+	public record Strip(List<String> icons, int more, String problem) {}
+
+	public static Strip strip(String text, boolean block, IdCompletion ids) {
+		String name = NameText.tidy(text);
+		if (name.isEmpty()) return new Strip(List.of(), 0, null);
+		if (!IdPattern.isPattern(name)) return ids.known(name) ? new Strip(List.of(IdCompletion.shortId(name)), 0, null) : new Strip(List.of(), 0, block ? "no such block" : "no such item");
+		Summary s = summary(name, block, ids);
+		if (s == null) return new Strip(List.of(), 0, "not a name yet");
+		if (s.count() == 0) return new Strip(List.of(), 0, "matches nothing");
+		int shown = Math.min(4, s.count());
+		return new Strip(s.all().subList(0, shown), s.count() - shown, null);
 	}
 
 	/** Whether one term stands for something: a known id or tag, a wildcard that fits anything. An exclusion counts by what it names. */
@@ -216,7 +231,8 @@ public final class NamePicker {
 			ok = false;
 			if (IdPattern.valid(t)) for (String id : ids.ids()) if (IdPattern.matches(t, id, block)) { ok = true; break; }
 		}
-		if (TERMS.size() < 1024) TERMS.put(key, ok);
+		if (TERMS.size() >= 1024) TERMS.clear();
+		TERMS.put(key, ok);
 		return ok;
 	}
 

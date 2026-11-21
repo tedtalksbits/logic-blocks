@@ -53,9 +53,11 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   looked up through `IdPattern.tags`, set per side: the plugin uses Bukkit tags, the client the registries' holders.
   An older plugin refuses a pattern with its usual "Name a block" message.
   Self-test "patterns" steps on real Paper; tests 71-80.
-- **Editor v2** (DESIGN "Editor v2" has the owner's decisions and the build order). Step 1 is **released as v0.6.0**
-  (plugin 0.6.0, unchanged from 0.5.2 but tags follow the plugin version; client 0.7.0); steps 2-4 are to come as
-  v0.7.0. Step 1: the list under a name box (`ui/NameText`, `NamePicker`, `NamePanel`), chips, the hover
+- **Editor v2** (DESIGN "Editor v2" has the owner's decisions and how it's built). Step 1 is **released as v0.6.0**
+  (plugin 0.6.0, client 0.7.0). Steps 2-4 (lamps, option lists, side map, menu, tab line, start screen) are built as
+  **plugin 0.7.0 / client 0.8.0, not released, not seen in a game** (tests 96-109). **Change the editor in
+  `ui/EditorLayout` (pure), not in `LogicScreen`**, and run `EditorLayoutTest`: it fails on any overlap or anything
+  off-screen at five sizes. Step 1: the list under a name box (`ui/NameText`, `NamePicker`, `NamePanel`), chips, the hover
   panel, pattern offers. **Draw the editor's own panels through `ui/Painter`** (pure Java) so layouts are unit-tested;
   only `GuiPainter` touches the game. The owner has used it in a game (tests 81-95). **Before tagging, check
   `build.gradle.kts` has the tag's version**: the release workflow refuses a tag that doesn't match.

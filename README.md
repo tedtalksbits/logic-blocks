@@ -42,13 +42,15 @@ Logic Block items keep their rules: older programs are read and upgraded automat
    which. Press **N** to turn the labels off or on (rebind it under Controls > Logic Blocks). Their size, height,
    distance from the centre, colours and backing are yours to change: **Labels** in the editor, or `/logicblocks`.
 4. **Right-click** it to open the editor (sneak + right-click with a block places against it instead).
-5. **+ Rule**, then click the buttons to cycle through choices and type ids and numbers. Each condition shows
-   `now: <what the block sees> (true/false)`; the rule that's true right now is green. **use** fills in the block or
-   item that's actually there, **hand** the one you're holding. While typing an id, the rest of it shows in grey:
-   **Tab** accepts it.
+5. A new block asks what it should do: pick a ready-made start, or **+ Start empty** for a first rule. Click a
+   button to see every choice it has, with a few words on each (a side opens a map of the block's sides, with what's
+   on each); type names and numbers. A **lamp** in front of each condition is green while it holds: point at it to
+   read what the block sees. Under a name, icons show what it matches; **use** fills in the block or item that's
+   actually there, **hand** the one you're holding. While typing a name, a list under it completes it: **Tab**
+   takes the first.
 6. **Save**. The block's output changes within a tick or two.
 
-**Copy**, **Paste** and **Presets** (top of the editor): Copy puts the rules on your clipboard as one line of text
+**Copy**, **Paste**, **Presets** and **Labels** (the menu button next to Save): Copy puts the rules on your clipboard as one line of text
 (`logicblocks:...`), to paste into another Logic Block or share with someone; Paste loads them. Presets has
 ready-made rules to start from: a sorter station, a latch, a door that closes itself, a clock, a counter, the
 combination lock, and each part of the machines in [docs/BUILDS.md](docs/BUILDS.md). Pasting or picking a preset
