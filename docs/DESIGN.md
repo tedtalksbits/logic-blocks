@@ -191,7 +191,7 @@ The principles: teach at the moment of need (the four symbols show only while a 
 and never take the keyboard away (a name box stays a text box).
 
 Build order: 1. the name list (released as v0.6.0); 2. lamps and option lists; 3. a map of the sides; 4. the menu,
-the tab line and a start screen for a new block (2 to 4 built together, client 0.8.0).
+the tab line and a start screen for a new block (2 to 4 built together, released as v0.7.0).
 
 **How the editor is built now.** `EditorLayout` (pure Java) works out every element: buttons, boxes, words, lamps,
 the icons under a name, with its place, its text and what it does to the `Draft`. `LogicScreen` only turns those

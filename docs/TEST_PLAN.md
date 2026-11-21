@@ -167,7 +167,7 @@ The mockups are in `Claude outputs\logic-blocks\ui-v2\ui-v2.html`.
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the
 recipe cost.
 
-## Tests: editor v2, the rest (plugin 0.7.0, client 0.8.0, not released yet)
+## Tests: editor v2, the rest (plugin 0.7.0, client 0.8.0)
 
 The whole editor is laid out by new code, so please look at every row kind once. Where an older test above says
 "now: ..." under a row, point at that row's lamp instead; where it says a button steps to the next value, the button
