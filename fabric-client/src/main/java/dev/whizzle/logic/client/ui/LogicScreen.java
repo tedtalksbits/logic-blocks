@@ -47,6 +47,13 @@ public final class LogicScreen extends Screen {
 	private NamePanel.Layout pickerLayout;
 	private int pickIndex = -1;
 	private boolean pickerClosed;
+	/**
+	 * The panel showing what a pattern or tag matches (pointer on a name, or on a tag in the list): what it's for, which
+	 * of the matches the scroll wheel has chosen, and the matches while it's on screen (else null).
+	 */
+	private String matchesKey;
+	private int matchesChosen;
+	private NamePicker.Summary matchesShown;
 	/** Words between the buttons of the extra-action rows ("from", "to", "for"), placed by init, drawn each frame. */
 	private record Label(int x, int y, String text, int color) {}
 	private final List<Label> labels = new java.util.ArrayList<>();
@@ -552,20 +559,54 @@ public final class LogicScreen extends Screen {
 			List<Boolean> ok = terms.stream().map(t -> NamePicker.termOk(t, n.block(), ids(n.block()))).toList();
 			NamePanel.chips(p, terms, ok, n.box().getX(), n.box().getY(), n.box().getWidth(), n.box().getHeight(), !n.edit());
 		}
+		matchesShown = null;
 		if (pickerLayout != null) {
 			g.nextStratum();
 			int hovered = pickerLayout.rowAt(mouseX, mouseY);
 			NamePanel.draw(p, pickerView, pickerLayout, pickerName.block(), hovered >= 0 ? hovered : pickIndex >= 0 ? pickIndex : pickerView.tabRow());
+			// A tag or pattern in the list, under the pointer or chosen with the arrow keys: what it holds, beside the list.
+			int row = hovered >= 0 ? hovered : pickIndex;
+			List<NamePicker.Row> rows = pickerView.rows();
+			if (row >= 0 && row < rows.size() && rows.get(row).special() && rows.get(row).value() != null) {
+				NamePicker.Summary summary = NamePicker.summary(rows.get(row).value(), pickerName.block(), ids(pickerName.block()));
+				if (summary != null) {
+					int rowY = pickerLayout.y();
+					for (NamePanel.Hit hit : pickerLayout.hits()) if (hit.row() == row) rowY = hit.y();
+					int[] size = NamePanel.hoverSize(p, summary, pickerName.block());
+					matches(g, p, summary, pickerName.block(), "row|" + rows.get(row).value(),
+						NamePanel.beside(pickerLayout, rowY, size[0], size[1], width, height));
+					return;
+				}
+			}
 			if (pickerLayout.contains(mouseX, mouseY)) return;
 		}
 		for (NameBox n : nameBoxes) {
 			if (!n.box().isMouseOver(mouseX, mouseY) || (pickerLayout != null && n.box() == pickerBox)) continue;
 			NamePicker.Summary summary = NamePicker.summary(n.box().getValue(), n.block(), ids(n.block()));
 			if (summary == null) continue;
-			g.nextStratum();
-			NamePanel.hover(p, summary, n.block(), mouseX, mouseY, width, height);
+			int[] size = NamePanel.hoverSize(p, summary, n.block());
+			matches(g, p, summary, n.block(), "box|" + n.box().getValue(), NamePanel.byPointer(mouseX, mouseY, size[0], size[1], width, height));
 			return;
 		}
+		matchesKey = null;
+	}
+
+	private void matches(GuiGraphicsExtractor g, Painter p, NamePicker.Summary summary, boolean block, String key, int[] at) {
+		key = (block ? "b|" : "i|") + key;
+		if (!key.equals(matchesKey)) { matchesKey = key; matchesChosen = 0; }
+		matchesShown = summary;
+		g.nextStratum();
+		NamePanel.hover(p, summary, block, at[0], at[1], matchesChosen);
+	}
+
+	/** The scroll wheel goes through what a pattern or tag matches while that panel is showing, naming each. */
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		if (matchesShown != null && matchesShown.count() > 1 && scrollY != 0) {
+			matchesChosen = Math.floorMod(matchesChosen + (scrollY < 0 ? 1 : -1), matchesShown.count());
+			return true;
+		}
+		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
 	/** The id of what the player holds (main hand, else off hand): a block's id for block checks. Null if nothing fits. */

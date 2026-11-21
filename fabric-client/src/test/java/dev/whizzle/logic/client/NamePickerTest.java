@@ -145,13 +145,40 @@ class NamePickerTest {
     @Test void summaryOfAName() {
         NamePicker.Summary s = NamePicker.summary("*stone*, !*cobblestone*", false, ids);
         assertEquals(2, s.count());
-        assertEquals(List.of("stone", "stone_bricks"), s.sample());
+        assertEquals(List.of("stone", "stone_bricks"), s.all());
         assertEquals(2, s.leftOutCount());
         assertEquals(List.of("cobblestone", "mossy_cobblestone"), s.leftOut());
         assertEquals(0, NamePicker.summary("nothing_*", false, ids).count());
         assertNull(NamePicker.summary("stone", false, ids), "a plain name has nothing to sum up");
         assertNull(NamePicker.summary("stone, ", false, ids));
         assertEquals(0, NamePicker.summary("#logs", false, ids).leftOutCount());
+    }
+
+    @Test void matchesPanelNamesTheChosenOne() {
+        Fake p = new Fake();
+        NamePicker.Summary s = NamePicker.summary("*", false, ids);
+        assertEquals(IDS.size(), s.count());
+        int[] size = NamePanel.hoverSize(p, s, false);
+        NamePanel.hover(p, s, false, 10, 10, 0);
+        assertTrue(p.texts.contains(s.all().get(0)) && p.texts.contains("1 of 14   scroll to browse"), p.texts.toString());
+        p.texts.clear();
+        NamePanel.hover(p, s, false, 10, 10, 13);
+        assertTrue(p.texts.contains(s.all().get(13)) && p.texts.contains("14 of 14   scroll to browse"), "the wheel reaches the last, past the first row");
+        assertArrayEquals(size, NamePanel.hoverSize(p, s, false), "the panel doesn't change size while scrolling");
+        for (int[] f : p.fills) assertTrue(f[0] >= 10 && f[1] >= 10 && f[2] <= 10 + size[0] && f[3] <= 10 + size[1], "everything inside the panel");
+
+        p.texts.clear();
+        NamePanel.hover(p, NamePicker.summary("#logs", false, ids), false, 10, 10, 1);
+        assertTrue(p.texts.contains("Matches 2 items") && p.texts.contains("birch_log"), "a tag: its members, the second chosen: " + p.texts);
+        p.texts.clear();
+        NamePanel.hover(p, NamePicker.summary("nothing_*", false, ids), false, 10, 10, 0);
+        assertEquals(List.of("Matches nothing"), p.texts);
+
+        assertArrayEquals(new int[] {30, 32}, NamePanel.byPointer(20, 20, 100, 50, 480, 270));
+        assertTrue(NamePanel.byPointer(470, 260, 100, 50, 480, 270)[0] + 100 <= 480, "kept on screen");
+        NamePanel.Layout l = new NamePanel.Layout(100, 40, 200, 100, List.of(), List.of());
+        assertArrayEquals(new int[] {302, 60}, NamePanel.beside(l, 60, 120, 50, 480, 270), "right of the list, level with the row");
+        assertTrue(NamePanel.beside(l, 60, 200, 50, 480, 270)[0] + 200 <= 480, "or where it fits");
     }
 
     @Test void whichTermsStandForSomething() {

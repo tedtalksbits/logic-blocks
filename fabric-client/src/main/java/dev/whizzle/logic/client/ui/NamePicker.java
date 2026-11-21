@@ -41,8 +41,10 @@ public final class NamePicker {
 	/** A pattern that covers several kinds of what's there: "deepslate_*", 3 kinds. */
 	public record Offer(String pattern, int kinds) {}
 
-	/** What a name matches: how many, the first few, and what its "!" terms leave out. */
-	public record Summary(int count, List<String> sample, int leftOutCount, List<String> leftOut) {}
+	/** What a name matches: every id, shortest first, and what its "!" terms leave out (how many, and the first few). */
+	public record Summary(List<String> all, int leftOutCount, List<String> leftOut) {
+		public int count() { return all.size(); }
+	}
 
 	private static final int COMPLETIONS = 4, HERE = 5, SAMPLE = 4;
 
@@ -184,13 +186,13 @@ public final class NamePicker {
 		if (cached != null) return cached;
 		String without = NameText.withoutExclusions(name);
 		boolean exclusions = !without.equals(name);
-		List<String> sample = new ArrayList<>(), leftOut = new ArrayList<>();
-		int count = 0, out = 0;
+		List<String> all = new ArrayList<>(), leftOut = new ArrayList<>();
+		int out = 0;
 		for (String id : ids.ids()) {
-			if (IdPattern.matches(name, id, block)) { if (count++ < 8) sample.add(id); }
+			if (IdPattern.matches(name, id, block)) all.add(id);
 			else if (exclusions && !without.isEmpty() && IdPattern.matches(without, id, block)) { if (out++ < 3) leftOut.add(id); }
 		}
-		Summary s = new Summary(count, List.copyOf(sample), out, List.copyOf(leftOut));
+		Summary s = new Summary(List.copyOf(all), out, List.copyOf(leftOut));
 		if (SUMMARIES.size() < 256) SUMMARIES.put(key, s);
 		return s;
 	}

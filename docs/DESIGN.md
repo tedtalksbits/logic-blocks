@@ -199,4 +199,6 @@ try, what a whole name matches), `NamePanel` draws it. The panels are drawn thro
 graphics, so their layout is unit-tested without Minecraft; `GuiPainter` is the game's side. They're drawn in a
 later stratum than the widgets so they cover them. A name being typed is coloured per term by an `EditBox`
 formatter; a name at rest is drawn as chips over its box (a lone plain name stays plain text, so most boxes look as
-before).
+before). What a pattern or tag matches shows like a bundle's contents: a grid of icons, one framed
+and named, and the scroll wheel goes through all of them (the owner asked to see a tag's items and to scroll the
+matches by name). It shows for a name under the pointer and for a tag or pattern row of the list.

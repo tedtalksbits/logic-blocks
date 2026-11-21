@@ -155,10 +155,12 @@ look hard at whether things overlap, get cut off, or draw underneath something.
 | 84 | In an empty name box type `sto` | **ITEMS**: stone (marked Tab), stone_bricks, then names with "sto" inside. Tab makes `stone`. Add `, #lo`: **TAGS** with `#logs` and how many items it has. |
 | 85 | Arrow down to another row and press Enter; then click a row with the mouse | Each replaces only the term being typed; the cursor stays in the box and the list stays open. |
 | 86 | Press Esc with the list open, then Esc again | The first Esc only puts the list away. The second closes the editor as before (asking first if there are changes). Typing, or clicking the box, brings the list back. |
-| 87 | Move the pointer onto a pattern name you aren't typing in; also on a block you can't edit | A panel: "Matches 23 items", the first icons, "+15", and "Left out: cobblestone, ..." when it has `!` terms. `nothing_*` says "Matches nothing" in red. |
+| 87 | Move the pointer onto a pattern name you aren't typing in; also on a block you can't edit | A panel like a bundle's: "Matches 23 items", a grid of icons with the first one framed and named under it, "1 of 23   scroll to browse", and "Left out: cobblestone, ..." when it has `!` terms. `nothing_*` says "Matches nothing" in red. |
 | 88 | A chest with deepslate bricks, deepslate tiles and cobbled deepslate; add an Items condition on it (its name starts as `red_wool`) | Under the row a button `*deepslate* 3 kinds`, the pattern in purple; clicking sets the name to it. With one kind in the chest the button says `use` and the item, as before. The list has the same offer under **TRY**. |
 | 89 | Click the name box of a **Block** North condition | **NORTH SIDE NOW** shows the block there and whether the name matches it; completions say **BLOCKS** and use block icons. |
 | 90 | Open the list in a box low on the screen; then shrink the window or raise the GUI scale | The list opens above the box when there's no room below, and never leaves the screen; on a very narrow window the symbols line wraps to two. |
+| 91 | With that panel showing, turn the scroll wheel | The frame moves through the icons one by one, the name under the grid follows, the count says "5 of 23"; past the second row the grid moves along; after the last it starts over. The panel doesn't change size. |
+| 92 | Type `#lo` in a name box and put the pointer on the `#logs` row of the list (or reach it with the arrow keys) | The same panel opens beside the list, level with the row, showing what the tag holds; the wheel goes through it. Same for the pattern under **TRY**. |
 
 ## Please report
 

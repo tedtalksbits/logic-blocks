@@ -134,33 +134,70 @@ public final class NamePanel {
 		return lines;
 	}
 
-	/** Draws what a name matches next to the pointer, kept inside the screen. */
-	public static void hover(Painter p, NamePicker.Summary s, boolean block, int mouseX, int mouseY, int screenW, int screenH) {
+	static final int COLS = 8, GRID_ROWS = 2, CELL = 18;
+
+	/** A hover panel worked out: its text, wrapped, and its size, which doesn't depend on which item is chosen. */
+	private record Plan(String title, int inner, List<String> leftOut, int rows, int w, int h) {}
+
+	private static Plan plan(Painter p, NamePicker.Summary s, boolean block) {
 		String what = block ? " blocks" : " items";
 		String title = s.count() == 0 ? "Matches nothing" : "Matches " + s.count() + (s.count() == 1 ? what.substring(0, what.length() - 1) : what);
-		int more = s.count() - s.sample().size();
-		int iconsW = s.sample().size() * 18 + (more > 0 ? 2 + p.width("+" + more) : 0);
-		int inner = Math.max(Math.max(p.width(title), iconsW), 150);
+		int inner = Math.max(Math.max(p.width(title), COLS * CELL), 150);
 		List<String> out = new ArrayList<>();
 		if (s.leftOutCount() > 0) {
 			int rest = s.leftOutCount() - s.leftOut().size();
 			out = wrap(p, "Left out: " + String.join(", ", s.leftOut()) + (rest > 0 ? " and " + rest + " more" : ""), inner);
 		}
-		int w = inner + 2 * PAD + 2, h = PAD + LINE + (s.sample().isEmpty() ? 0 : 20) + out.size() * LINE + PAD;
+		int rows = Math.min(GRID_ROWS, (s.count() + COLS - 1) / COLS);
+		int h = PAD + LINE + (s.count() == 0 ? 0 : rows * CELL + 3 + LINE + (s.count() > 1 ? LINE : 0)) + out.size() * LINE + PAD;
+		return new Plan(title, inner, out, rows, inner + 2 * PAD + 2, h);
+	}
+
+	/** Width and height of the panel {@link #hover} draws. */
+	public static int[] hoverSize(Painter p, NamePicker.Summary s, boolean block) {
+		Plan plan = plan(p, s, block);
+		return new int[] {plan.w(), plan.h()};
+	}
+
+	/** Where a panel of this size goes next to the pointer, kept inside the screen. */
+	public static int[] byPointer(int mouseX, int mouseY, int w, int h, int screenW, int screenH) {
 		int x = mouseX + 10, y = mouseY + 12;
 		if (x + w > screenW - 2) x = Math.max(2, mouseX - w - 6);
 		if (y + h > screenH - 2) y = Math.max(2, mouseY - h - 6);
-		frame(p, x, y, w, h, 0xF0100010, 0xFF5000A0);
+		return new int[] {x, y};
+	}
+
+	/** Where a panel of this size goes beside the list, level with a row: to its right, or its left when there's no room. */
+	public static int[] beside(Layout l, int rowY, int w, int h, int screenW, int screenH) {
+		int x = l.x() + l.w() + 2;
+		if (x + w > screenW - 2) x = l.x() - w - 2 >= 2 ? l.x() - w - 2 : Math.max(2, screenW - w - 2);
+		return new int[] {x, Math.max(2, Math.min(rowY, screenH - h - 2))};
+	}
+
+	/**
+	 * Draws what a name matches, like a bundle's contents: a grid of icons with one chosen and named under it. The
+	 * scroll wheel moves {@code chosen} through all of them; the grid follows it.
+	 */
+	public static void hover(Painter p, NamePicker.Summary s, boolean block, int x, int y, int chosen) {
+		Plan plan = plan(p, s, block);
+		frame(p, x, y, plan.w(), plan.h(), 0xF0100010, 0xFF5000A0);
 		int cx = x + PAD + 1, cy = y + PAD;
-		p.text(title, cx, cy, s.count() == 0 ? RED : GOLD);
+		p.text(plan.title(), cx, cy, s.count() == 0 ? RED : GOLD);
 		cy += LINE;
-		if (!s.sample().isEmpty()) {
-			int ix = cx;
-			for (String id : s.sample()) { p.icon(id, block, ix, cy + 1); ix += 18; }
-			if (more > 0) p.text("+" + more, ix + 2, cy + 5, GRAY);
-			cy += 20;
+		if (s.count() > 0) {
+			chosen = Math.max(0, Math.min(chosen, s.count() - 1));
+			int first = Math.max(0, chosen / COLS - (plan.rows() - 1)) * COLS;
+			for (int i = first; i < Math.min(s.count(), first + plan.rows() * COLS); i++) {
+				int ix = cx + (i - first) % COLS * CELL, iy = cy + (i - first) / COLS * CELL;
+				if (i == chosen) { p.fill(ix, iy, ix + CELL, iy + CELL, 0xFFFFFFFF); p.fill(ix + 1, iy + 1, ix + CELL - 1, iy + CELL - 1, 0xFF3A2A55); }
+				p.icon(s.all().get(i), block, ix + 1, iy + 1);
+			}
+			cy += plan.rows() * CELL + 3;
+			p.text(p.fit(s.all().get(chosen), plan.inner()), cx, cy, WHITE);
+			cy += LINE;
+			if (s.count() > 1) { p.text((chosen + 1) + " of " + s.count() + "   scroll to browse", cx, cy, DIM); cy += LINE; }
 		}
-		for (String line : out) { p.text(line, cx, cy, GRAY); cy += LINE; }
+		for (String line : plan.leftOut()) { p.text(line, cx, cy, GRAY); cy += LINE; }
 	}
 
 	// ---- chips ----
