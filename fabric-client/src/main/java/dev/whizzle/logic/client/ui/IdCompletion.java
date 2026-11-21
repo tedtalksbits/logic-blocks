@@ -56,6 +56,25 @@ public final class IdCompletion {
 		return full == null || !full.startsWith(lower) ? null : full.substring(lower.length());
 	}
 
+	/** Every id, vanilla ones without "minecraft:", shortest first. */
+	public List<String> ids() { return ids; }
+
+	public List<String> tags() { return tags; }
+
+	/**
+	 * Up to {@code limit} names (or tags) for a term being typed: those starting with it, shortest first (so the first
+	 * is what {@link #complete} picks), then those with it anywhere. Empty for an empty term or one with a wildcard.
+	 */
+	public List<String> matching(String term, boolean tag, int limit) {
+		String t = shortId(term);
+		List<String> out = new java.util.ArrayList<>();
+		if (t.isEmpty() || t.indexOf('*') >= 0) return out;
+		List<String> pool = tag ? tags : ids;
+		for (String name : pool) { if (out.size() >= limit) return out; if (name.startsWith(t)) out.add(name); }
+		for (String name : pool) { if (out.size() >= limit) return out; if (!name.startsWith(t) && name.contains(t)) out.add(name); }
+		return out;
+	}
+
 	public boolean known(String id) { return ids.contains(shortId(id)); }
 
 	public boolean knownTag(String tag) { return tags.contains(shortId(tag)); }

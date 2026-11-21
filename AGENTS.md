@@ -53,6 +53,11 @@ rules like `when north is red_wool -> output 15` and outputs a redstone signal 0
   looked up through `IdPattern.tags`, set per side: the plugin uses Bukkit tags, the client the registries' holders.
   An older plugin refuses a pattern with its usual "Name a block" message.
   Self-test "patterns" steps on real Paper; tests 71-80.
+- **Editor v2** (client 0.7.0, **in progress, not released**; DESIGN "Editor v2" has the owner's decisions and the
+  build order). Step 1 is in: the list under a name box (`ui/NameText`, `NamePicker`, `NamePanel`), chips, the hover
+  panel, pattern offers. **Draw the editor's own panels through `ui/Painter`** (pure Java) so layouts are unit-tested;
+  only `GuiPainter` touches the game. **Not seen in a game yet** (tests 81-90). The plugin is still 0.5.2: bump it
+  (tags follow the plugin version) when v2 is released, not before.
 - **Logic Block texture** (plugin 0.5.0, client 0.6.0, protocol 4, **released v0.5.0**): the server sends each modded player every
   chunk's Logic Blocks (`ChunkList`, `ClientBridge.onChunkSent/pushChunk`); the mod keeps them in
   `LogicBlockCache` and `render/LogicBlockModel` (wrapping every daylight detector model after baking, Fabric

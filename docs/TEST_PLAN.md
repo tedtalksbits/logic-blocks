@@ -134,13 +134,31 @@ an editor).
 | 71 | New block: **Block** North is `deepslate_*` -> Output 15. Put deepslate bricks, then deepslate tiles, then cobbled deepslate north of it | On for the bricks and tiles; off for cobbled deepslate (it doesn't start with `deepslate_`). `*deepslate*` would match all three. |
 | 72 | **Move** `*_ore` from Up to Down, a chest of mixed ores and stone above | Only the ores move. The editor's "now:" line counts every ore. |
 | 73 | Type `nothing_*` in a Block box and Save | It stays white while you type it (it fits nothing); Save says "no block matches "nothing_*"". |
-| 74 | Type `deepslate_*`, then `*`, then `deepslate_bricks` in a box | The two patterns turn light purple as soon as they fit something; the plain id is white. Same on a block you can only look at (dimmer). |
-| 75 | **Move** `*stone*, !*cobblestone*` Up to Down; above, a chest of stone, stone bricks, cobblestone, mossy cobblestone | Stone and stone bricks move; both cobblestones stay. The text is light purple. |
+| 74 | Type `deepslate_*`, then `*`, then `deepslate_bricks` in a box | While typing, the two patterns turn light purple as soon as they fit something; the plain id is white. Click away: the patterns become purple chips, the plain id stays plain text. On a block you can only look at the chips are dimmer. |
+| 75 | **Move** `*stone*, !*cobblestone*` Up to Down; above, a chest of stone, stone bricks, cobblestone, mossy cobblestone | Stone and stone bricks move; both cobblestones stay. |
 | 76 | **Block** North is `#slabs, !*oak*` -> Output 15. Put a stone slab north, then an oak slab | On for the stone slab, off for the oak slab. |
 | 77 | **Move** `#logs` Up to Down with logs and planks above | Only the logs move. |
-| 78 | In a box type `#sla` and press Tab; then `*stone*, !cobb` and Tab | Grey text offers `bs`; Tab makes `#slabs`. The second becomes `*stone*, !cobblestone`. |
+| 78 | In a box type `#sla` and press Tab; then `*stone*, !cobb` and Tab | Grey text offers `bs`, and the list under the box has `#slabs` first, marked Tab; Tab makes `#slabs`. The second becomes `*stone*, !cobblestone`. |
 | 79 | Type `#not_a_tag` and Save | It stays white; Save says no block or item matches. |
 | 80 | Open the editor on a block with an **Items** condition (with "hand" button) and a long name like `*cobblestone*` | The "now:" text sits right of the hand button, never over it; the name fits in its box. |
+
+## Tests: editor v2, step 1: the name list (client 0.7.0, not released yet)
+
+The mockups are in `Claude outputs\logic-blocks\ui-v2\ui-v2.html`. None of this has been seen in a game: please
+look hard at whether things overlap, get cut off, or draw underneath something.
+
+| # | Do this | Expect |
+|---|---|---|
+| 81 | Put a chest with stone, stone bricks and cobblestone above a Logic Block. Add an **Items** Up condition, empty its name box | The empty box shows a grey example, `stone, *_ore, #logs`. With the cursor in it a list opens under the box, on top of everything: **IN THE CHEST (UP)** with the three items, their icons and counts, and a bottom line `* any letters   # tag   ! leave out   , and also`. |
+| 82 | Type `*stone*, !*cobblestone*` | While typing, `*stone*` is purple and the `!` term red. In the list stone and stone bricks say "matches" in green; cobblestone is red, struck through, "left out". |
+| 83 | Click another box | The name becomes chips: purple `*stone*`, red struck-through `*cobblestone*`, covering the box's text cleanly. A name too long for the box ends in `+1`. A plain name like `stone` stays plain white text. |
+| 84 | In an empty name box type `sto` | **ITEMS**: stone (marked Tab), stone_bricks, then names with "sto" inside. Tab makes `stone`. Add `, #lo`: **TAGS** with `#logs` and how many items it has. |
+| 85 | Arrow down to another row and press Enter; then click a row with the mouse | Each replaces only the term being typed; the cursor stays in the box and the list stays open. |
+| 86 | Press Esc with the list open, then Esc again | The first Esc only puts the list away. The second closes the editor as before (asking first if there are changes). Typing, or clicking the box, brings the list back. |
+| 87 | Move the pointer onto a pattern name you aren't typing in; also on a block you can't edit | A panel: "Matches 23 items", the first icons, "+15", and "Left out: cobblestone, ..." when it has `!` terms. `nothing_*` says "Matches nothing" in red. |
+| 88 | A chest with deepslate bricks, deepslate tiles and cobbled deepslate; add an Items condition on it (its name starts as `red_wool`) | Under the row a button `*deepslate* 3 kinds`, the pattern in purple; clicking sets the name to it. With one kind in the chest the button says `use` and the item, as before. The list has the same offer under **TRY**. |
+| 89 | Click the name box of a **Block** North condition | **NORTH SIDE NOW** shows the block there and whether the name matches it; completions say **BLOCKS** and use block icons. |
+| 90 | Open the list in a box low on the screen; then shrink the window or raise the GUI scale | The list opens above the box when there's no room below, and never leaves the screen; on a very narrow window the symbols line wraps to two. |
 
 ## Please report
 

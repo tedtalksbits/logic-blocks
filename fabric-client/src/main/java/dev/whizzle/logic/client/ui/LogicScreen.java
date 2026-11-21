@@ -32,6 +32,21 @@ public final class LogicScreen extends Screen {
 	/** Content width and left edge of the centred column. */
 	private int cw, left;
 	private final java.util.Map<EditBox, IdCompletion> idBoxes = new java.util.HashMap<>();
+	/** A block or item name box, and the side whose block or container its name is checked against. */
+	private record NameBox(EditBox box, boolean block, boolean edit, Side side) {}
+	private final List<NameBox> nameBoxes = new java.util.ArrayList<>();
+	/**
+	 * The list under the name being typed ({@link NamePicker}): the box it belongs to, the text and surroundings it was
+	 * worked out for, the row chosen with the arrow keys (-1: none), and whether Esc put it away.
+	 */
+	private NameBox pickerName;
+	private EditBox pickerBox;
+	private String pickerText;
+	private java.util.Map<String, Integer> pickerHere;
+	private NamePicker.View pickerView;
+	private NamePanel.Layout pickerLayout;
+	private int pickIndex = -1;
+	private boolean pickerClosed;
 	/** Words between the buttons of the extra-action rows ("from", "to", "for"), placed by init, drawn each frame. */
 	private record Label(int x, int y, String text, int color) {}
 	private final List<Label> labels = new java.util.ArrayList<>();
@@ -56,6 +71,7 @@ public final class LogicScreen extends Screen {
 		this.open = open;
 		this.draft = new Draft(open.program());
 		this.snapshot = open.snapshot();
+		NamePicker.clearCache();   // tags may have changed since the editor was last open
 		// A block with only "also" rules (a sorter station, say) opens on them.
 		this.alsoTab = draft.rules.isEmpty() && !draft.also.isEmpty();
 		if (!open.editable()) { status = "Only " + open.owner() + " or an operator can change this Logic Block."; statusColor = GOLD; }
@@ -86,6 +102,7 @@ public final class LogicScreen extends Screen {
 		cw = Math.min(width, MAX_WIDTH);
 		left = (width - cw) / 2;
 		idBoxes.clear();
+		nameBoxes.clear();
 		labels.clear();
 		extraNowX.clear();
 		condNowX.clear();
@@ -166,7 +183,7 @@ public final class LogicScreen extends Screen {
 				case BLOCK -> {
 					x = cycle(x, y, 44, cond.side.label(), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
 					x = cycle(x, y, 40, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
-					x = text(x, y, 110, cond.id, v -> cond.id = v, edit, true);
+					x = text(x, y, 110, cond.id, v -> cond.id = v, edit, true, cond.side);
 				}
 				case SIGNAL -> {
 					x = cycle(x, y, 44, sideLabel(cond.side), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
@@ -175,7 +192,7 @@ public final class LogicScreen extends Screen {
 				}
 				case ITEMS -> {
 					x = cycle(x, y, 44, cond.side.label(), edit, () -> cond.side = Draft.next(cond.sides(), cond.side));
-					x = text(x, y, 110, cond.id, v -> cond.id = v, edit, false);
+					x = text(x, y, 110, cond.id, v -> cond.id = v, edit, false, cond.side);
 					x = cycle(x, y, 22, cond.op.symbol, edit, () -> cond.op = Draft.next(cond.ops(), cond.op));
 					x = number(x, y, 34, cond.number, v -> cond.number = v, edit);
 				}
@@ -211,8 +228,9 @@ public final class LogicScreen extends Screen {
 			int nowX = x0 + 50;
 			if (edit && (cond.kind == Condition.Kind.BLOCK || cond.kind == Condition.Kind.ITEMS)) {
 				int bx = x0 + 48;
-				if (suggestion(cond) != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { cond.id = suggestion(cond); changed(); }).pos(bx, y + 20).size(28, 13).build()); bx += 30; }
-				if (handButton(bx, y + 20, cond.id, cond.kind == Condition.Kind.BLOCK, v -> cond.id = v)) bx += 32;
+				boolean block = cond.kind == Condition.Kind.BLOCK;
+				bx = offerButton(bx, y + 20, cond.id, here(block, cond.side), block, suggestion(cond), v -> cond.id = v);
+				if (handButton(bx, y + 20, cond.id, block, v -> cond.id = v)) bx += 32;
 				nowX = Math.max(nowX, bx + 2);
 			}
 			condNowX.add(nowX);
@@ -253,7 +271,7 @@ public final class LogicScreen extends Screen {
 				}
 				case STOP -> x = cycle(x, y, 26, Condition.memoryLabel(ex.id), edit, () -> ex.id = Draft.next(TIMER_IDS, ex.id));
 				default -> {
-					x = text(x, y, 100, ex.id, v -> ex.id = v, edit, false);
+					x = text(x, y, 100, ex.id, v -> ex.id = v, edit, false, ex.from);
 					x = word(x, y, "from");
 					x = cycle(x, y, 40, ex.from.label(), edit, () -> ex.from = Draft.next(List.of(Side.FACES), ex.from));
 					x = word(x, y, "to");
@@ -264,8 +282,7 @@ public final class LogicScreen extends Screen {
 			addRenderableWidget(Button.builder(Component.literal("x"), b -> { rule.extras.remove(index); changed(); }).pos(x + 2, y).size(16, 18).build()).active = edit;
 			int lx = x0 + 34;
 			if (ex.kind == Action.Kind.MOVE && edit) {
-				String use = moveSuggestion(ex);
-				if (use != null) { addRenderableWidget(Button.builder(Component.literal("use"), b -> { ex.id = use; changed(); }).pos(lx, y + 20).size(28, 13).build()); lx += 30; }
+				lx = offerButton(lx, y + 20, ex.id, here(false, ex.from), false, moveSuggestion(ex), v -> ex.id = v);
 				if (handButton(lx, y + 20, ex.id, false, v -> ex.id = v)) lx += 32;
 			}
 			extraNowX.add(lx);
@@ -343,33 +360,88 @@ public final class LogicScreen extends Screen {
 		return x + w + 2;
 	}
 
-	private int text(int x, int y, int w, String value, Consumer<String> set, boolean edit, boolean block) {
+	/**
+	 * A box for a block or item name. {@code side}: where the block or container is that the name is about, for the list
+	 * shown while typing ({@link NamePicker}).
+	 */
+	private int text(int x, int y, int w, String value, Consumer<String> set, boolean edit, boolean block, Side side) {
 		EditBox box = addRenderableWidget(new EditBox(font, x, y, w, 18, Component.literal(block ? "block" : "item")));
-		box.setMaxLength(dev.whizzle.logic.model.IdPattern.MAX);   // patterns can have several terms
+		box.setMaxLength(IdPattern.MAX);   // names can have several terms
 		box.setValue(value);
 		IdCompletion ids = ids(block);
 		box.setSuggestion(edit ? ids.suggestion(value) : null);
-		colour(box, value, block);
+		box.setHint(Component.literal("stone, *_ore, #logs").withStyle(EditBox.DEFAULT_HINT_STYLE));   // an example, shown while it's empty
+		box.addFormatter((shown, from) -> styled(box.getValue(), shown, from, block));
 		box.setResponder(v -> {
 			set.accept(v.trim().toLowerCase(Locale.ROOT));
 			if (!v.equals(value)) dirty = true;
 			box.setSuggestion(ids.suggestion(v));   // grey rest of the id; Tab accepts it
-			colour(box, v, block);
 		});
 		box.setEditable(edit);
 		if (edit) idBoxes.put(box, ids);
+		nameBoxes.add(new NameBox(box, block, edit, side));
 		return x + w + 2;
 	}
 
-	/** Text colour of a pattern that fits something ("deepslate_*", "*"): it stands for many blocks or items, not one. */
-	static final int PATTERN = 0xFFD58CFF, PATTERN_UNEDITABLE = 0xFF8E64A8;
+	/** Colour of a wildcard or tag that stands for something: it means many blocks or items, not one. */
+	static final int PATTERN = 0xFFD58CFF;
 
-	/** A working pattern shows in {@link #PATTERN}; a plain id, or a pattern that fits nothing, in the usual colour. */
-	private static void colour(EditBox box, String text, boolean block) {
-		String id = text.trim().toLowerCase(Locale.ROOT);
-		boolean pattern = dev.whizzle.logic.model.IdPattern.isPattern(id) && (id.equals("*") || (dev.whizzle.logic.model.IdPattern.valid(id) && known(id, block)));
-		box.setTextColor(pattern ? PATTERN : EditBox.DEFAULT_TEXT_COLOR);
-		box.setTextColorUneditable(pattern ? PATTERN_UNEDITABLE : 0xFF707070);
+	/**
+	 * A name as it shows while it's edited: each wildcard or tag that stands for something in {@link #PATTERN}, each
+	 * "!" term in red, the rest in the usual colour. {@code shown} is the part of {@code text} in view, from {@code from}.
+	 */
+	private static net.minecraft.util.FormattedCharSequence styled(String text, String shown, int from, boolean block) {
+		List<NameText.Term> terms = NameText.terms(text);
+		List<net.minecraft.util.FormattedCharSequence> runs = new java.util.ArrayList<>();
+		int at = 0;
+		while (at < shown.length()) {
+			int pos = from + at;
+			net.minecraft.network.chat.Style style = net.minecraft.network.chat.Style.EMPTY;
+			int end = shown.length();
+			for (NameText.Term t : terms) {
+				if (pos < t.start()) { end = Math.min(end, t.start() - from); break; }
+				if (pos < t.end()) {
+					end = Math.min(end, t.end() - from);
+					if (t.kind() == NameText.Kind.EXCLUDE) style = style.withColor(NamePanel.RED & 0xFFFFFF);
+					else if (t.kind() != NameText.Kind.PLAIN && NamePicker.termOk(t, block, ids(block))) style = style.withColor(PATTERN & 0xFFFFFF);
+					break;
+				}
+			}
+			end = Math.max(end, at + 1);
+			runs.add(net.minecraft.util.FormattedCharSequence.forward(shown.substring(at, end), style));
+			at = end;
+		}
+		return net.minecraft.util.FormattedCharSequence.composite(runs);
+	}
+
+	/** What's really on a side, to check a name against: the container's items with their counts, or the block there (count -1). */
+	private java.util.Map<String, Integer> here(boolean block, Side side) {
+		if (!block) return side == Side.ANY ? null : snapshot.containers().get(side.ordinal());
+		java.util.Map<String, Integer> blocks = new java.util.LinkedHashMap<>();
+		for (Side s : side == Side.ANY ? List.of(Side.FACES) : List.of(side)) if (!snapshot.block(s).isEmpty()) blocks.put(snapshot.block(s), -1);
+		return blocks;
+	}
+
+	private String hereTitle(boolean block, Side side) {
+		if (block) return side == Side.ANY ? "Around this block now" : side.label() + " side now";
+		return "In the " + snapshot.block(side) + " (" + side.label().toLowerCase(Locale.ROOT) + ")";
+	}
+
+	/**
+	 * The button under a name: a pattern covering several kinds of what's there ("deepslate_* 3 kinds"), which is how
+	 * players meet patterns; else the one thing that's there ("use stone"). Returns the x after it.
+	 */
+	private int offerButton(int x, int y, String current, java.util.Map<String, Integer> here, boolean block, String single, Consumer<String> set) {
+		NamePicker.Offer offer = NamePicker.offer(here, current, block);
+		String value = offer != null ? offer.pattern() : single;
+		if (value == null) return x;
+		Component label = offer != null
+			? Component.literal(font.plainSubstrByWidth(offer.pattern(), 90)).withStyle(st -> st.withColor(PATTERN & 0xFFFFFF))
+				.append(Component.literal(" " + offer.kinds() + " kinds").withStyle(ChatFormatting.WHITE))
+			: Component.literal(font.plainSubstrByWidth("use " + single, 96));
+		int w = font.width(label) + 8;
+		addRenderableWidget(Button.builder(label, b -> { set.accept(value); changed(); }).pos(x, y).size(w, 13).build());
+		return x + w + 2;
 	}
 
 	/** Every block or item id the game knows, for completion. */
@@ -384,10 +456,34 @@ public final class LogicScreen extends Screen {
 		return itemIds;
 	}
 
-	/** Tab in a block or item box accepts its suggestion (otherwise Tab moves between boxes as usual). */
+	/**
+	 * With the list open under a name: the arrow keys choose a row, Enter or Tab takes it (Tab also takes the completion
+	 * when no row was chosen), Esc puts the list away. Otherwise Tab in a name box accepts its grey suggestion, or moves
+	 * between boxes as usual.
+	 */
 	@Override
 	public boolean keyPressed(net.minecraft.client.input.KeyEvent key) {
-		if (key.key() == com.mojang.blaze3d.platform.InputConstants.KEY_TAB && getFocused() instanceof EditBox box && idBoxes.containsKey(box)) {
+		int k = key.key();
+		if (pickerLayout != null && pickerView != null && getFocused() == pickerBox) {
+			List<NamePicker.Row> rows = pickerView.rows();
+			if (k == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) { pickerClosed = true; pickerLayout = null; return true; }
+			if (k == com.mojang.blaze3d.platform.InputConstants.KEY_DOWN || k == com.mojang.blaze3d.platform.InputConstants.KEY_UP) {
+				int step = k == com.mojang.blaze3d.platform.InputConstants.KEY_DOWN ? 1 : -1;
+				int at = pickIndex >= 0 ? pickIndex : pickerView.tabRow() >= 0 ? pickerView.tabRow() : step > 0 ? -1 : rows.size();
+				for (int n = 0; n < rows.size(); n++) {
+					at = Math.floorMod(at + step, rows.size());
+					if (rows.get(at).value() != null) { pickIndex = at; break; }
+				}
+				return true;
+			}
+			boolean enter = k == com.mojang.blaze3d.platform.InputConstants.KEY_RETURN || k == com.mojang.blaze3d.platform.InputConstants.KEY_NUMPADENTER;
+			int row = pickIndex >= 0 ? pickIndex : enter ? -1 : pickerView.tabRow();
+			if ((enter || k == com.mojang.blaze3d.platform.InputConstants.KEY_TAB) && row >= 0 && row < rows.size() && rows.get(row).value() != null) {
+				pick(rows.get(row));
+				return true;
+			}
+		}
+		if (k == com.mojang.blaze3d.platform.InputConstants.KEY_TAB && getFocused() instanceof EditBox box && idBoxes.containsKey(box)) {
 			String full = idBoxes.get(box).complete(box.getValue());
 			if (full != null) {
 				box.setValue(full);
@@ -396,6 +492,80 @@ public final class LogicScreen extends Screen {
 			}
 		}
 		return super.keyPressed(key);
+	}
+
+	/** A click on a row of the list takes it; a click elsewhere on the list does nothing (it doesn't reach what's under it). */
+	@Override
+	public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+		if (pickerLayout != null && pickerView != null && pickerLayout.contains(event.x(), event.y())) {
+			int row = pickerLayout.rowAt(event.x(), event.y());
+			if (row >= 0) pick(pickerView.rows().get(row));
+			return true;
+		}
+		boolean handled = super.mouseClicked(event, doubleClick);
+		// A click in the name box brings the list back after Esc; a click on nothing puts it away.
+		if (pickerBox != null && getFocused() == pickerBox) pickerClosed = !pickerBox.isMouseOver(event.x(), event.y());
+		return handled;
+	}
+
+	/** Puts a row's name in place of the term being typed. */
+	private void pick(NamePicker.Row row) {
+		if (pickerBox == null || row.value() == null) return;
+		pickerBox.setValue(NameText.replaceLast(pickerBox.getValue(), row.value()));
+		pickerBox.moveCursorToEnd(false);
+		pickIndex = -1;
+	}
+
+	/** Works out the list for the name box that has the keyboard, if any; again only when its text or surroundings change. */
+	private void updatePicker(Painter p) {
+		NameBox name = null;
+		if (getFocused() instanceof EditBox focused) for (NameBox n : nameBoxes) if (n.box() == focused && n.edit()) name = n;
+		pickerName = name;
+		if (name == null) { pickerBox = null; pickerView = null; pickerLayout = null; return; }
+		EditBox box = name.box();
+		if (box != pickerBox) { pickerBox = box; pickerText = null; pickerClosed = false; pickIndex = -1; }
+		String text = box.getValue();
+		java.util.Map<String, Integer> here = here(name.block(), name.side());
+		if (pickerView == null || !text.equals(pickerText) || !java.util.Objects.equals(here, pickerHere)) {
+			if (pickerText != null && !text.equals(pickerText)) { pickerClosed = false; pickIndex = -1; }   // typing brings it back
+			pickerText = text;
+			pickerHere = here == null ? null : new java.util.HashMap<>(here);
+			pickerView = NamePicker.view(text, name.block(), ids(name.block()), here, hereTitle(name.block(), name.side()));
+			if (pickIndex >= pickerView.rows().size()) pickIndex = -1;
+		}
+		pickerLayout = pickerClosed ? null : NamePanel.layout(p, pickerView, box.getX(), box.getY(), box.getHeight(), width, height);
+	}
+
+	/**
+	 * What's drawn over the widgets: names as chips in the boxes not being typed in, the list under the one that is, and
+	 * what a name matches when the pointer is on it.
+	 */
+	private void drawNames(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+		Painter p = new GuiPainter(g, font);
+		updatePicker(p);
+		g.nextStratum();
+		for (NameBox n : nameBoxes) {
+			if (n.box() == getFocused()) continue;
+			String text = n.box().getValue();
+			List<NameText.Term> terms = NameText.terms(text);
+			if (terms.isEmpty() || !IdPattern.isPattern(text)) continue;   // a plain name stays plain text
+			List<Boolean> ok = terms.stream().map(t -> NamePicker.termOk(t, n.block(), ids(n.block()))).toList();
+			NamePanel.chips(p, terms, ok, n.box().getX(), n.box().getY(), n.box().getWidth(), n.box().getHeight(), !n.edit());
+		}
+		if (pickerLayout != null) {
+			g.nextStratum();
+			int hovered = pickerLayout.rowAt(mouseX, mouseY);
+			NamePanel.draw(p, pickerView, pickerLayout, pickerName.block(), hovered >= 0 ? hovered : pickIndex >= 0 ? pickIndex : pickerView.tabRow());
+			if (pickerLayout.contains(mouseX, mouseY)) return;
+		}
+		for (NameBox n : nameBoxes) {
+			if (!n.box().isMouseOver(mouseX, mouseY) || (pickerLayout != null && n.box() == pickerBox)) continue;
+			NamePicker.Summary summary = NamePicker.summary(n.box().getValue(), n.block(), ids(n.block()));
+			if (summary == null) continue;
+			g.nextStratum();
+			NamePanel.hover(p, summary, n.block(), mouseX, mouseY, width, height);
+			return;
+		}
 	}
 
 	/** The id of what the player holds (main hand, else off hand): a block's id for block checks. Null if nothing fits. */
@@ -582,6 +752,7 @@ public final class LogicScreen extends Screen {
 		g.pose().translate(left, 0);
 		drawContent(g);
 		g.pose().popMatrix();
+		drawNames(g, mouseX, mouseY);
 	}
 
 	@Override

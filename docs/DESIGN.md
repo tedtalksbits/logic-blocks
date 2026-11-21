@@ -172,3 +172,31 @@ server sends a `Snapshot` (everything the block can see: the six neighbours, the
 nearby player distances) every 4 ticks. The client evaluates the *draft* rules against it with the same `Engine`,
 which is how the editor shows true/false for edits that aren't saved yet. Saving sends the whole program; the
 server validates it with the same `Program.problem()` the client uses, plus ownership and reach.
+
+## Editor v2 (in progress)
+
+The owner asked what tells players they can use wildcards (nothing did, in game) and for the editor to be designed
+like a game studio would, without losing a mod's freedom. Mockups: `Claude outputs\logic-blocks\ui-v2\ui-v2.html`.
+Decided by the owner:
+
+- The whole editor is redone, as one release, client only (no plugin or protocol change).
+- A green/red lamp per row replaces the "now: ..." line; the reading shows on hover.
+- Block / North / is / Output open a list of every option; the scroll wheel still steps through them.
+- The tabs stay **If/Else** and **When**, with one grey line under them saying how the open tab works ("first true
+  rule sets the output" / "every true rule runs").
+- Copy, Paste, Presets and Labels move into one menu.
+
+The principles: teach at the moment of need (the four symbols show only while a name is typed), teach by offering
+(a chest with three deepslate kinds offers `*deepslate*`), show instead of describing (icons of what a name matches),
+and never take the keyboard away (a name box stays a text box).
+
+Build order: 1. the name list (done, below); 2. lamps and option lists; 3. a map of the sides; 4. the menu, the tab
+line and a start screen for a new block; 5. docs and screenshots.
+
+**Step 1, the name list.** `NameText` takes a typed name apart, `NamePicker` works out what to show (completions for
+the term being typed, what's really in the container or on the side and whether the name fits each, a pattern to
+try, what a whole name matches), `NamePanel` draws it. The panels are drawn through `Painter`, not the game's
+graphics, so their layout is unit-tested without Minecraft; `GuiPainter` is the game's side. They're drawn in a
+later stratum than the widgets so they cover them. A name being typed is coloured per term by an `EditBox`
+formatter; a name at rest is drawn as chips over its box (a lone plain name stays plain text, so most boxes look as
+before).
