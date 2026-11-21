@@ -142,10 +142,9 @@ an editor).
 | 79 | Type `#not_a_tag` and Save | It stays white; Save says no block or item matches. |
 | 80 | Open the editor on a block with an **Items** condition (with "hand" button) and a long name like `*cobblestone*` | The "now:" text sits right of the hand button, never over it; the name fits in its box. |
 
-## Tests: editor v2, step 1: the name list (client 0.7.0, not released yet)
+## Tests: editor v2, step 1: the name list (plugin 0.6.0, client 0.7.0)
 
-The mockups are in `Claude outputs\logic-blocks\ui-v2\ui-v2.html`. None of this has been seen in a game: please
-look hard at whether things overlap, get cut off, or draw underneath something.
+The mockups are in `Claude outputs\logic-blocks\ui-v2\ui-v2.html`.
 
 | # | Do this | Expect |
 |---|---|---|

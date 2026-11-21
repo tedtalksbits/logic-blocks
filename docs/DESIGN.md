@@ -190,7 +190,7 @@ The principles: teach at the moment of need (the four symbols show only while a 
 (a chest with three deepslate kinds offers `*deepslate*`), show instead of describing (icons of what a name matches),
 and never take the keyboard away (a name box stays a text box).
 
-Build order: 1. the name list (done, below); 2. lamps and option lists; 3. a map of the sides; 4. the menu, the tab
+Build order: 1. the name list (released as v0.6.0, below); 2. lamps and option lists; 3. a map of the sides; 4. the menu, the tab
 line and a start screen for a new block; 5. docs and screenshots.
 
 **Step 1, the name list.** `NameText` takes a typed name apart, `NamePicker` works out what to show (completions for
