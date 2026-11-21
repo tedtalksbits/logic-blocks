@@ -151,7 +151,7 @@ look hard at whether things overlap, get cut off, or draw underneath something.
 |---|---|---|
 | 81 | Put a chest with stone, stone bricks and cobblestone above a Logic Block. Add an **Items** Up condition, empty its name box | The empty box shows a grey example, `stone, *_ore, #logs`. With the cursor in it a list opens under the box, on top of everything: **IN THE CHEST (UP)** with the three items, their icons and counts, and a bottom line `* any letters   # tag   ! leave out   , and also`. |
 | 82 | Type `*stone*, !*cobblestone*` | While typing, `*stone*` is purple and the `!` term red. In the list stone and stone bricks say "matches" in green; cobblestone is red, struck through, "left out". |
-| 83 | Click another box | The name becomes chips: purple `*stone*`, red struck-through `*cobblestone*`, covering the box's text cleanly. A name too long for the box ends in `+1`. A plain name like `stone` stays plain white text. |
+| 83 | Click another box, or on an empty part of the screen | The cursor leaves the box and the name becomes chips: purple `*stone*`, red struck-through `*cobblestone*`, covering the box's text cleanly. A name too long for the box ends in `+1`. A plain name like `stone` stays plain white text. |
 | 84 | In an empty name box type `sto` | **ITEMS**: stone (marked Tab), stone_bricks, then names with "sto" inside. Tab makes `stone`. Add `, #lo`: **TAGS** with `#logs` and how many items it has. |
 | 85 | Arrow down to another row and press Enter; then click a row with the mouse | Each replaces only the term being typed; the cursor stays in the box and the list stays open. |
 | 86 | Press Esc with the list open, then Esc again | The first Esc only puts the list away. The second closes the editor as before (asking first if there are changes). Typing, or clicking the box, brings the list back. |
@@ -161,8 +161,9 @@ look hard at whether things overlap, get cut off, or draw underneath something.
 | 90 | Open the list in a box low on the screen; then shrink the window or raise the GUI scale | The list opens above the box when there's no room below, and never leaves the screen; on a very narrow window the symbols line wraps to two. |
 | 91 | With that panel showing, turn the scroll wheel | The frame moves through the icons one by one, the name under the grid follows, the count says "5 of 23"; past the second row the grid moves along; after the last it starts over. The panel doesn't change size. |
 | 92 | Type `#lo` in a name box and put the pointer on the `#logs` row of the list (or reach it with the arrow keys) | The same panel opens beside the list, level with the row, showing what the tag holds; the wheel goes through it. Same for the pattern under **TRY**. |
-
-## Please report
+| 93 | Type `#wool, #log` in a name box, then click inside `#wool` (or move there with the arrow keys) | The list is now about `#wool`: tags starting with "wool". Pick one: only that term changes, `#log` stays, and the cursor sits right after the new term. Click into a finished tag: the list shows that tag first. |
+| 94 | Click on an empty part of the screen, put the pointer on a pattern name, scroll to an item and press Delete | The panel says "Delete leaves this one out". The name gains `, !that_item` (a new red chip), the count drops by one, and the frame is on the next item, so Delete again leaves that out too. While you're typing in a box the panel doesn't say it and Delete deletes a letter as usual. |
+| 95 | Type `#lo`, point at the `#logs` row, scroll to `oak_log`, press Delete | The term becomes the tag without that item: `#logs, !oak_log`. |
 
 Screenshots of anything wrong, and anything that felt clunky: the button cycling, the layout, wording, the
 recipe cost.

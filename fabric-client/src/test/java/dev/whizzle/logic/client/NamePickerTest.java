@@ -71,6 +71,42 @@ class NamePickerTest {
         assertEquals("deepslate_*", NameText.replaceLast("deepslate_bricks", "deepslate_*"));
     }
 
+    @Test void theTermTheCursorIsIn() {
+        String text = "#wool_slabs, #log";
+        NameText.Typing t = NameText.typing(text, 5);
+        assertEquals("", t.head());
+        assertEquals("wool_slabs", t.body(), "the whole term, wherever in it the cursor is");
+        assertTrue(t.tag());
+        assertEquals(", #log", t.tail());
+        assertEquals("wool_slabs", NameText.typing(text, 11).body(), "just before the comma still belongs to it");
+        assertEquals("wool_slabs", NameText.typing(text, 0).body());
+        assertEquals("log", NameText.typing(text, 12).body(), "after the comma: the next term");
+        assertEquals("#slabs, #log", t.replace("#slabs"));
+        assertEquals(6, t.caret("#slabs"), "the cursor ends up after the new term");
+        t = NameText.typing("stone,  ! cobb , dirt", 12);
+        assertEquals("stone,  ! ", t.head());
+        assertEquals("cobb", t.body());
+        assertEquals(" , dirt", t.tail());
+
+        IdCompletion both = new IdCompletion(IDS.stream().map(s -> "minecraft:" + s).toList(), List.of("minecraft:logs", "minecraft:wool_slabs", "minecraft:wool_stairs"));
+        NamePicker.View v = NamePicker.view("#wool_s, #logs", 3, false, both, null, "");
+        assertEquals(List.of("#wool_slabs", "#wool_stairs"), v.rows().stream().map(NamePicker.Row::label).toList(), "the list is about the term the cursor is in");
+        assertEquals(0, v.tabRow());
+        v = NamePicker.view("#wool_slabs, #log", 4, false, both, null, "");
+        assertEquals("#wool_slabs", v.rows().get(0).label(), "clicked into a finished tag: it shows that tag");
+        assertEquals(-1, v.tabRow());
+        assertEquals("#logs", NamePicker.view("#wool_slabs, #log", false, both, null, "").rows().get(0).label(), "at the end: the last term");
+    }
+
+    @Test void leavingOneOut() {
+        assertEquals("#logs, !oak_log", NameText.leaveOut("#logs", "oak_log"));
+        assertEquals("*stone*, !*cobblestone*, !stone_bricks", NameText.leaveOut("*stone*,!*cobblestone*", "stone_bricks"));
+        assertEquals("#logs, dirt", NameText.leaveOut("#logs, stone, dirt", "stone"), "a plain term naming it is dropped instead");
+        assertEquals("stone, !stone", NameText.leaveOut("stone", "stone"), "but not when nothing would be left to match");
+        assertEquals("!oak_log", NameText.leaveOut("", "oak_log"));
+        assertTrue(IdPattern.valid(NameText.leaveOut("#logs", "oak_log")));
+    }
+
     @Test void completesTheTermBeingTyped() {
         NamePicker.View v = NamePicker.view("sto", false, ids, null, "");
         assertEquals("Items", v.sections().get(0).title());
@@ -158,21 +194,26 @@ class NamePickerTest {
         Fake p = new Fake();
         NamePicker.Summary s = NamePicker.summary("*", false, ids);
         assertEquals(IDS.size(), s.count());
-        int[] size = NamePanel.hoverSize(p, s, false);
-        NamePanel.hover(p, s, false, 10, 10, 0);
+        int[] size = NamePanel.hoverSize(p, s, false, false);
+        NamePanel.hover(p, s, false, 10, 10, 0, false);
         assertTrue(p.texts.contains(s.all().get(0)) && p.texts.contains("1 of 14   scroll to browse"), p.texts.toString());
         p.texts.clear();
-        NamePanel.hover(p, s, false, 10, 10, 13);
+        NamePanel.hover(p, s, false, 10, 10, 13, false);
         assertTrue(p.texts.contains(s.all().get(13)) && p.texts.contains("14 of 14   scroll to browse"), "the wheel reaches the last, past the first row");
-        assertArrayEquals(size, NamePanel.hoverSize(p, s, false), "the panel doesn't change size while scrolling");
+        assertArrayEquals(size, NamePanel.hoverSize(p, s, false, false), "the panel doesn't change size while scrolling");
         for (int[] f : p.fills) assertTrue(f[0] >= 10 && f[1] >= 10 && f[2] <= 10 + size[0] && f[3] <= 10 + size[1], "everything inside the panel");
 
         p.texts.clear();
-        NamePanel.hover(p, NamePicker.summary("#logs", false, ids), false, 10, 10, 1);
+        NamePanel.hover(p, NamePicker.summary("#logs", false, ids), false, 10, 10, 1, false);
         assertTrue(p.texts.contains("Matches 2 items") && p.texts.contains("birch_log"), "a tag: its members, the second chosen: " + p.texts);
         p.texts.clear();
-        NamePanel.hover(p, NamePicker.summary("nothing_*", false, ids), false, 10, 10, 0);
+        NamePanel.hover(p, NamePicker.summary("nothing_*", false, ids), false, 10, 10, 0, false);
         assertEquals(List.of("Matches nothing"), p.texts);
+
+        p.texts.clear();
+        NamePanel.hover(p, s, false, 10, 10, 0, true);
+        assertTrue(p.texts.contains("Delete leaves this one out"), "said only for a name that can be edited");
+        assertEquals(size[1] + 10, NamePanel.hoverSize(p, s, false, true)[1], "one more line");
 
         assertArrayEquals(new int[] {30, 32}, NamePanel.byPointer(20, 20, 100, 50, 480, 270));
         assertTrue(NamePanel.byPointer(470, 260, 100, 50, 480, 270)[0] + 100 <= 480, "kept on screen");

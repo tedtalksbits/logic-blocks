@@ -139,23 +139,26 @@ public final class NamePanel {
 	/** A hover panel worked out: its text, wrapped, and its size, which doesn't depend on which item is chosen. */
 	private record Plan(String title, int inner, List<String> leftOut, int rows, int w, int h) {}
 
-	private static Plan plan(Painter p, NamePicker.Summary s, boolean block) {
+	static final String LEAVE_OUT = "Delete leaves this one out";
+
+	private static Plan plan(Painter p, NamePicker.Summary s, boolean block, boolean canLeaveOut) {
 		String what = block ? " blocks" : " items";
 		String title = s.count() == 0 ? "Matches nothing" : "Matches " + s.count() + (s.count() == 1 ? what.substring(0, what.length() - 1) : what);
 		int inner = Math.max(Math.max(p.width(title), COLS * CELL), 150);
+		if (canLeaveOut && s.count() > 0) inner = Math.max(inner, p.width(LEAVE_OUT));
 		List<String> out = new ArrayList<>();
 		if (s.leftOutCount() > 0) {
 			int rest = s.leftOutCount() - s.leftOut().size();
 			out = wrap(p, "Left out: " + String.join(", ", s.leftOut()) + (rest > 0 ? " and " + rest + " more" : ""), inner);
 		}
 		int rows = Math.min(GRID_ROWS, (s.count() + COLS - 1) / COLS);
-		int h = PAD + LINE + (s.count() == 0 ? 0 : rows * CELL + 3 + LINE + (s.count() > 1 ? LINE : 0)) + out.size() * LINE + PAD;
+		int h = PAD + LINE + (s.count() == 0 ? 0 : rows * CELL + 3 + LINE + (s.count() > 1 ? LINE : 0) + (canLeaveOut ? LINE : 0)) + out.size() * LINE + PAD;
 		return new Plan(title, inner, out, rows, inner + 2 * PAD + 2, h);
 	}
 
 	/** Width and height of the panel {@link #hover} draws. */
-	public static int[] hoverSize(Painter p, NamePicker.Summary s, boolean block) {
-		Plan plan = plan(p, s, block);
+	public static int[] hoverSize(Painter p, NamePicker.Summary s, boolean block, boolean canLeaveOut) {
+		Plan plan = plan(p, s, block, canLeaveOut);
 		return new int[] {plan.w(), plan.h()};
 	}
 
@@ -176,10 +179,11 @@ public final class NamePanel {
 
 	/**
 	 * Draws what a name matches, like a bundle's contents: a grid of icons with one chosen and named under it. The
-	 * scroll wheel moves {@code chosen} through all of them; the grid follows it.
+	 * scroll wheel moves {@code chosen} through all of them; the grid follows it. {@code canLeaveOut}: say that Delete
+	 * leaves the chosen one out (for a name that can be edited).
 	 */
-	public static void hover(Painter p, NamePicker.Summary s, boolean block, int x, int y, int chosen) {
-		Plan plan = plan(p, s, block);
+	public static void hover(Painter p, NamePicker.Summary s, boolean block, int x, int y, int chosen, boolean canLeaveOut) {
+		Plan plan = plan(p, s, block, canLeaveOut);
 		frame(p, x, y, plan.w(), plan.h(), 0xF0100010, 0xFF5000A0);
 		int cx = x + PAD + 1, cy = y + PAD;
 		p.text(plan.title(), cx, cy, s.count() == 0 ? RED : GOLD);
@@ -196,6 +200,7 @@ public final class NamePanel {
 			p.text(p.fit(s.all().get(chosen), plan.inner()), cx, cy, WHITE);
 			cy += LINE;
 			if (s.count() > 1) { p.text((chosen + 1) + " of " + s.count() + "   scroll to browse", cx, cy, DIM); cy += LINE; }
+			if (canLeaveOut) { p.text(LEAVE_OUT, cx, cy, DIM); cy += LINE; }
 		}
 		for (String line : plan.leftOut()) { p.text(line, cx, cy, GRAY); cy += LINE; }
 	}

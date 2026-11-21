@@ -50,13 +50,14 @@ public final class NamePicker {
 
 	/**
 	 * @param text  the box's text
+	 * @param cursor where the cursor is in it: the list is about the term it's in
 	 * @param block whether it names blocks (else items)
 	 * @param here  what's really there, id to count (a count below 0: not counted, as for a block), or null
 	 * @param hereTitle the heading for those, e.g. "In the chest (up)"
 	 */
-	public static View view(String text, boolean block, IdCompletion ids, Map<String, Integer> here, String hereTitle) {
+	public static View view(String text, int cursor, boolean block, IdCompletion ids, Map<String, Integer> here, String hereTitle) {
 		List<Section> sections = new ArrayList<>();
-		NameText.Typing typing = NameText.typing(text);
+		NameText.Typing typing = NameText.typing(text, cursor);
 		String body = typing.body();
 		int tabRow = -1;
 		if (!body.isEmpty() && !typing.tag() && body.indexOf('*') >= 0) {
@@ -109,6 +110,11 @@ public final class NamePicker {
 			}
 		}
 		return new View(sections, tabRow);
+	}
+
+	/** With the cursor at the end of the text. */
+	public static View view(String text, boolean block, IdCompletion ids, Map<String, Integer> here, String hereTitle) {
+		return view(text, text.length(), block, ids, here, hereTitle);
 	}
 
 	/** The name as far as it can be judged while typing: tidied, and without a last term that isn't valid yet. Else "". */

@@ -54,6 +54,11 @@ public final class LogicScreen extends Screen {
 	private String matchesKey;
 	private int matchesChosen;
 	private NamePicker.Summary matchesShown;
+	/** Whose matches those are: the name box, and for a row of the list the tag or pattern that row would put in. */
+	private NameBox matchesBox;
+	private String matchesRow;
+	private boolean matchesCanLeaveOut;
+	private int pickerCursor = -1;
 	/** Words between the buttons of the extra-action rows ("from", "to", "for"), placed by init, drawn each frame. */
 	private record Label(int x, int y, String text, int color) {}
 	private final List<Label> labels = new java.util.ArrayList<>();
@@ -471,6 +476,10 @@ public final class LogicScreen extends Screen {
 	@Override
 	public boolean keyPressed(net.minecraft.client.input.KeyEvent key) {
 		int k = key.key();
+		if (k == com.mojang.blaze3d.platform.InputConstants.KEY_DELETE && matchesShown != null && matchesShown.count() > 0 && matchesBox != null && matchesCanLeaveOut) {
+			leaveOutChosen();
+			return true;
+		}
 		if (pickerLayout != null && pickerView != null && getFocused() == pickerBox) {
 			List<NamePicker.Row> rows = pickerView.rows();
 			if (k == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) { pickerClosed = true; pickerLayout = null; return true; }
@@ -510,17 +519,37 @@ public final class LogicScreen extends Screen {
 			return true;
 		}
 		boolean handled = super.mouseClicked(event, doubleClick);
-		// A click in the name box brings the list back after Esc; a click on nothing puts it away.
-		if (pickerBox != null && getFocused() == pickerBox) pickerClosed = !pickerBox.isMouseOver(event.x(), event.y());
+		// A click on nothing leaves the box being typed in (the game would keep the cursor there): its name becomes
+		// chips and its list goes. A click in the box brings the list back after Esc.
+		if (getFocused() instanceof EditBox box) {
+			if (!box.isMouseOver(event.x(), event.y())) setFocused(null);
+			else if (box == pickerBox) pickerClosed = false;
+		}
 		return handled;
 	}
 
-	/** Puts a row's name in place of the term being typed. */
+	/** Puts a row's name in place of the term the cursor is in. */
 	private void pick(NamePicker.Row row) {
 		if (pickerBox == null || row.value() == null) return;
-		pickerBox.setValue(NameText.replaceLast(pickerBox.getValue(), row.value()));
-		pickerBox.moveCursorToEnd(false);
+		NameText.Typing typing = NameText.typing(pickerBox.getValue(), pickerBox.getCursorPosition());
+		pickerBox.setValue(typing.replace(row.value()));
+		pickerBox.moveCursorTo(typing.caret(row.value()), false);
 		pickIndex = -1;
+	}
+
+	/**
+	 * Delete while the matches are showing: leaves the chosen one out of that name ("!oak_log"). From a tag or pattern
+	 * row of the list, the row is taken first, so it's "that tag, without this one".
+	 */
+	private void leaveOutChosen() {
+		EditBox box = matchesBox.box();
+		String id = matchesShown.all().get(Math.max(0, Math.min(matchesChosen, matchesShown.count() - 1)));
+		String text = box.getValue();
+		if (matchesRow != null) text = NameText.typing(text, box.getCursorPosition()).replace(matchesRow);
+		String next = NameText.leaveOut(text, id);
+		if (next.length() > IdPattern.MAX) return;
+		box.setValue(next);
+		box.moveCursorToEnd(false);
 	}
 
 	/** Works out the list for the name box that has the keyboard, if any; again only when its text or surroundings change. */
@@ -530,14 +559,17 @@ public final class LogicScreen extends Screen {
 		pickerName = name;
 		if (name == null) { pickerBox = null; pickerView = null; pickerLayout = null; return; }
 		EditBox box = name.box();
-		if (box != pickerBox) { pickerBox = box; pickerText = null; pickerClosed = false; pickIndex = -1; }
+		if (box != pickerBox) { pickerBox = box; pickerText = null; pickerCursor = -1; pickerClosed = false; pickIndex = -1; }
 		String text = box.getValue();
+		int cursor = box.getCursorPosition();
 		java.util.Map<String, Integer> here = here(name.block(), name.side());
-		if (pickerView == null || !text.equals(pickerText) || !java.util.Objects.equals(here, pickerHere)) {
-			if (pickerText != null && !text.equals(pickerText)) { pickerClosed = false; pickIndex = -1; }   // typing brings it back
+		if (pickerView == null || !text.equals(pickerText) || cursor != pickerCursor || !java.util.Objects.equals(here, pickerHere)) {
+			if (pickerText != null && !text.equals(pickerText)) pickerClosed = false;   // typing brings it back
+			if (!text.equals(pickerText) || cursor != pickerCursor) pickIndex = -1;
 			pickerText = text;
+			pickerCursor = cursor;
 			pickerHere = here == null ? null : new java.util.HashMap<>(here);
-			pickerView = NamePicker.view(text, name.block(), ids(name.block()), here, hereTitle(name.block(), name.side()));
+			pickerView = NamePicker.view(text, cursor, name.block(), ids(name.block()), here, hereTitle(name.block(), name.side()));
 			if (pickIndex >= pickerView.rows().size()) pickIndex = -1;
 		}
 		pickerLayout = pickerClosed ? null : NamePanel.layout(p, pickerView, box.getX(), box.getY(), box.getHeight(), width, height);
@@ -572,9 +604,8 @@ public final class LogicScreen extends Screen {
 				if (summary != null) {
 					int rowY = pickerLayout.y();
 					for (NamePanel.Hit hit : pickerLayout.hits()) if (hit.row() == row) rowY = hit.y();
-					int[] size = NamePanel.hoverSize(p, summary, pickerName.block());
-					matches(g, p, summary, pickerName.block(), "row|" + rows.get(row).value(),
-						NamePanel.beside(pickerLayout, rowY, size[0], size[1], width, height));
+					int[] size = NamePanel.hoverSize(p, summary, pickerName.block(), true);
+					matches(g, p, summary, pickerName, rows.get(row).value(), true, NamePanel.beside(pickerLayout, rowY, size[0], size[1], width, height));
 					return;
 				}
 			}
@@ -584,19 +615,28 @@ public final class LogicScreen extends Screen {
 			if (!n.box().isMouseOver(mouseX, mouseY) || (pickerLayout != null && n.box() == pickerBox)) continue;
 			NamePicker.Summary summary = NamePicker.summary(n.box().getValue(), n.block(), ids(n.block()));
 			if (summary == null) continue;
-			int[] size = NamePanel.hoverSize(p, summary, n.block());
-			matches(g, p, summary, n.block(), "box|" + n.box().getValue(), NamePanel.byPointer(mouseX, mouseY, size[0], size[1], width, height));
+			// Not while a box is being typed in: there Delete deletes a letter.
+			boolean canLeaveOut = n.edit() && !(getFocused() instanceof EditBox);
+			int[] size = NamePanel.hoverSize(p, summary, n.block(), canLeaveOut);
+			matches(g, p, summary, n, null, canLeaveOut, NamePanel.byPointer(mouseX, mouseY, size[0], size[1], width, height));
 			return;
 		}
 		matchesKey = null;
+		matchesBox = null;
 	}
 
-	private void matches(GuiGraphicsExtractor g, Painter p, NamePicker.Summary summary, boolean block, String key, int[] at) {
-		key = (block ? "b|" : "i|") + key;
+	/** {@code row}: the tag or pattern of the list's row these are the matches of, or null for the box's whole name. */
+	private void matches(GuiGraphicsExtractor g, Painter p, NamePicker.Summary summary, NameBox box, String row, boolean canLeaveOut, int[] at) {
+		// The same box keeps its place in the grid while its name changes (Delete leaves one out, the next is chosen).
+		String key = nameBoxes.indexOf(box) + "|" + (row == null ? "" : row);
 		if (!key.equals(matchesKey)) { matchesKey = key; matchesChosen = 0; }
+		matchesChosen = Math.max(0, Math.min(matchesChosen, summary.count() - 1));
 		matchesShown = summary;
+		matchesBox = box;
+		matchesRow = row;
+		matchesCanLeaveOut = canLeaveOut;
 		g.nextStratum();
-		NamePanel.hover(p, summary, block, at[0], at[1], matchesChosen);
+		NamePanel.hover(p, summary, box.block(), at[0], at[1], matchesChosen, canLeaveOut);
 	}
 
 	/** The scroll wheel goes through what a pattern or tag matches while that panel is showing, naming each. */

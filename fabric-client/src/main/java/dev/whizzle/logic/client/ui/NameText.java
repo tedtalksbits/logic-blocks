@@ -60,22 +60,54 @@ public final class NameText {
 	}
 
 	/**
-	 * The term being typed, at the end of the text. {@code head}: everything before it (with a "!" if it's an
-	 * exclusion); {@code body}: what's typed of it so far, without "#"; {@code tag}: whether it started with "#".
+	 * The term the cursor is in: the one being typed or clicked into. {@code head}: everything before it (with its "!"
+	 * if it's an exclusion); {@code body}: the term, without "#"; {@code tag}: whether it started with "#";
+	 * {@code tail}: everything after it.
 	 */
-	public record Typing(String head, String body, boolean tag) {}
+	public record Typing(String head, String body, boolean tag, String tail) {
+		/** The text with this term replaced by {@code value} ("#logs", "stone", "deepslate_*"). */
+		public String replace(String value) { return head + value + tail; }
 
-	public static Typing typing(String text) {
-		String lower = text.toLowerCase(Locale.ROOT);
-		int cut = Math.max(lower.lastIndexOf(','), lower.lastIndexOf('!')) + 1;
-		String rest = lower.substring(cut), term = rest.stripLeading();
-		String head = lower.substring(0, cut) + rest.substring(0, rest.length() - term.length());
-		boolean tag = term.startsWith("#");
-		return new Typing(head, (tag ? term.substring(1) : term).stripTrailing(), tag);
+		/** Where the cursor belongs after {@link #replace}: at the end of the new term. */
+		public int caret(String value) { return head.length() + value.length(); }
 	}
 
-	/** The text with the term being typed replaced by {@code value} ("#logs", "stone", "deepslate_*"). */
+	public static Typing typing(String text, int cursor) {
+		String lower = text.toLowerCase(Locale.ROOT);
+		cursor = Math.max(0, Math.min(cursor, lower.length()));
+		int start = lower.lastIndexOf(',', cursor - 1) + 1, end = lower.indexOf(',', cursor);
+		if (end < 0) end = lower.length();
+		int a = start, b = end;
+		while (a < b && lower.charAt(a) == ' ') a++;
+		if (a < b && lower.charAt(a) == '!') { a++; while (a < b && lower.charAt(a) == ' ') a++; }
+		while (b > a && lower.charAt(b - 1) == ' ') b--;
+		boolean tag = a < b && lower.charAt(a) == '#';
+		return new Typing(lower.substring(0, a), lower.substring(tag ? a + 1 : a, b), tag, lower.substring(b));
+	}
+
+	/** The last term, as when typing at the end of the text. */
+	public static Typing typing(String text) { return typing(text, text.length()); }
+
+	/** The text with its last term replaced by {@code value}. */
 	public static String replaceLast(String text, String value) {
-		return typing(text).head() + value;
+		return typing(text).replace(value);
+	}
+
+	/**
+	 * The name changed to leave {@code id} out: a plain term naming exactly it is dropped (when other terms remain to
+	 * match something), otherwise "!id" is added.
+	 */
+	public static String leaveOut(String text, String id) {
+		List<Term> terms = terms(text);
+		List<Term> kept = new ArrayList<>();
+		boolean dropped = false, others = false;
+		for (Term t : terms) {
+			if (t.kind() == Kind.PLAIN && t.text().equals(id)) { dropped = true; continue; }
+			if (t.kind() != Kind.EXCLUDE) others = true;
+			kept.add(t);
+		}
+		if (dropped && others) return join(kept, false);
+		String tidy = join(terms, false);
+		return tidy.isEmpty() ? "!" + id : tidy + ", !" + id;
 	}
 }
